@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+@theme {
+  /* Identidad visual AUTOCELLS — ver prompt-codeautocells.md */
+  --color-primary: #2bb3d3;
+  /* -dark es el cyan de marca ajustado para pasar 4.5:1 en texto y botones sólidos.
+     El #2bb3d3 literal se conserva solo para usos decorativos (logo, tintes /10, /20). */
+  --color-primary-dark: #0e7490;
+  --color-primary-hover: #0b5f78;
+  --color-secondary: #58595b;
+  /* Gris para texto secundario/atenuado: pasa 4.5:1 en blanco (a diferencia de text-secondary/50-70). */
+  --color-muted: #6b6d6f;
+
+  --color-bg: #ffffff;
+  --color-bg-alt: #f5f7f8;
+
+  --color-success: #22c55e;
+  --color-success-dark: #15803d;
+  --color-danger: #ef4444;
+  --color-danger-dark: #b91c1c;
+
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 12px;
+
+  /* Ease-out con más "punch" que el default de Tailwind, para que hover/press se sientan intencionales. */
+  --ease-snappy: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* Entrada del hero del Home: mismo timing base para texto/CTA, variante propia para la imagen. */
+  --animate-hero-in: hero-in 900ms var(--ease-snappy) both;
+  --animate-hero-in-image: hero-in-image 1000ms var(--ease-snappy) both;
+
+  /* Splash screen: logo "enciende" (scale + fade), puntos de carga en cian, fade-out del overlay.
+     La duración del fade-out debe coincidir con FADE_MS en SplashScreen.jsx. */
+  --animate-splash-logo: splash-logo-in 700ms var(--ease-snappy) both;
+  --animate-splash-dot: splash-dot 900ms ease-in-out infinite;
+  --animate-splash-out: splash-out 400ms ease-out forwards;
+
+  /* Transición entre páginas: la nueva página se desliza en la dirección del nav
+     (Inicio→Catálogo entra desde la derecha; al regresar, desde la izquierda).
+     La dirección la decide MainLayout comparando el orden de las rutas. */
+  --animate-page-in-right: page-in-right 450ms var(--ease-snappy) both;
+  --animate-page-in-left: page-in-left 450ms var(--ease-snappy) both;
+}
+
+body {
+  @apply bg-bg font-sans text-secondary antialiased;
+}
+
+/* Movimiento sutil por defecto: fade + leve desplazamiento/escala. */
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-in-image {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* El logo del splash "enciende" como el botón de power de la marca. */
+@keyframes splash-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes splash-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes page-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes page-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Con prefers-reduced-motion, mismas keyframes sin transform: solo fade. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes hero-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes hero-in-image {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes splash-logo-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes splash-dot {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes page-in-right {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes page-in-left {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
