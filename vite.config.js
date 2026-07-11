@@ -3,6 +3,6 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => ({
-  base: mode === 'production' ? '/benjamin_cota/' : '/',
+  base: mode === 'production' ? '/AUTOCELLS/' : '/',
   plugins: [react(), tailwindcss()],
 }));

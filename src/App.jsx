@@ -27,7 +27,7 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false);
 
   return (
-    // basename sigue al `base` de vite.config.js (/benjamin_cota/), así las rutas
+    // basename sigue al `base` de vite.config.js (/AUTOCELLS/), así las rutas
     // del router funcionan igual en dev y en el servidor de la escuela.
     // CartProvider no usa hooks del router, por eso puede envolverlo.
     <CartProvider>
