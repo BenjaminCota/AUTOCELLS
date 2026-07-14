@@ -1,3 +1,7 @@
+// Con extensión .js: adminServices.test.js corre con `node --test` y Node ESM
+// no resuelve imports sin extensión (Vite acepta ambas formas).
+import { slugify } from '../lib/slugify.js';
+
 const defaultServices = [
   {
     id: 'liberacion-rsim',
@@ -8,15 +12,6 @@ const defaultServices = [
 ];
 
 let adminServices = defaultServices.map((service) => ({ ...service }));
-
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-}
 
 export function getAdminServices() {
   return adminServices;

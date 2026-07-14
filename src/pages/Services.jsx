@@ -1,8 +1,25 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Unlock, Smartphone, Settings2, CheckCircle2, MessageCircle } from 'lucide-react';
-import { whatsappLink } from '../data/store';
+import {
+  Unlock,
+  Smartphone,
+  Settings2,
+  CheckCircle2,
+  CalendarClock,
+  Sun,
+  Sunset,
+  ChevronLeft,
+  ChevronRight,
+  LoaderCircle,
+} from 'lucide-react';
 import { getAdminServices } from '../data/adminServices';
+import { getSlotsForDate, formatDateKey, addAppointment } from '../data/appointments';
+import { PHONE_PATTERN } from '../data/users';
+import { getCurrentUser } from '../routes/auth';
+import { useToast } from '../context/ToastContext';
+import Modal from '../components/Modal';
+import FormField from '../components/FormField';
+import Alert from '../components/Alert';
 
 const compatibility = [
   'iPhones bloqueados por compañía (AT&T, Telcel, Movistar, Unefon)',
@@ -32,10 +49,399 @@ const steps = [
   },
 ];
 
+// Las citas se agendan con máximo un mes de anticipación.
+const MAX_DAYS_AHEAD = 30;
+
+const WEEKDAY_HEADERS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+
+// Celdas del mes para la cuadrícula del calendario: nulls de relleno hasta el
+// día de la semana en que empieza el mes (semana iniciando en domingo).
+function buildMonthCells(year, month) {
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return [
+    ...Array.from({ length: firstWeekday }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => new Date(year, month, index + 1)),
+  ];
+}
+
+// Divide los slots en mañana/tarde para que la lista de horarios sea
+// escaneable (con slots de 30 min son ~18 por día).
+function groupSlots(slots) {
+  return [
+    { label: 'Mañana', icon: Sun, items: slots.filter(({ time }) => time < '14:00') },
+    { label: 'Tarde', icon: Sunset, items: slots.filter(({ time }) => time >= '14:00') },
+  ].filter((group) => group.items.length > 0);
+}
+
+function BookingModal({ services, onClose }) {
+  const toast = useToast();
+  const [submitting, setSubmitting] = useState(false);
+  const [serviceId, setServiceId] = useState(services[0]?.id ?? '');
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [displayedMonth, setDisplayedMonth] = useState(() => {
+    const today = new Date();
+    return { year: today.getFullYear(), month: today.getMonth() };
+  });
+  const [time, setTime] = useState('');
+  // Si hay sesión, el nombre se precarga desde la cuenta.
+  const [name, setName] = useState(() => getCurrentUser()?.name ?? '');
+  const [phone, setPhone] = useState('');
+  const [device, setDevice] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [confirmed, setConfirmed] = useState(null);
+  const [slotGroups, setSlotGroups] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(true);
+  // Sube de versión para re-consultar horarios (ej. tras un 409 del servidor).
+  const [slotsVersion, setSlotsVersion] = useState(0);
+
+  // Los horarios ocupados se consultan a la base de datos por fecha.
+  useEffect(() => {
+    let active = true;
+    setLoadingSlots(true);
+    getSlotsForDate(selectedDate)
+      .then((slots) => {
+        if (active) setSlotGroups(groupSlots(slots));
+      })
+      .catch(() => {
+        if (active) toast.error('No se pudieron cargar los horarios. Inténtalo de nuevo.');
+      })
+      .finally(() => {
+        if (active) setLoadingSlots(false);
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, slotsVersion]);
+
+  const service = services.find((item) => item.id === serviceId) ?? services[0];
+
+  // Rango agendable: de hoy a MAX_DAYS_AHEAD días. Las keys YYYY-MM-DD se
+  // comparan como strings sin convertir de vuelta a Date.
+  const today = new Date();
+  const todayKey = formatDateKey(today);
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + MAX_DAYS_AHEAD);
+  const maxKey = formatDateKey(maxDate);
+  const selectedKey = formatDateKey(selectedDate);
+
+  const monthCells = buildMonthCells(displayedMonth.year, displayedMonth.month);
+  const monthLabel = new Date(displayedMonth.year, displayedMonth.month, 1).toLocaleDateString(
+    'es-MX',
+    { month: 'long', year: 'numeric' },
+  );
+  const prevDisabled =
+    displayedMonth.year === today.getFullYear() && displayedMonth.month === today.getMonth();
+  const nextDisabled = new Date(displayedMonth.year, displayedMonth.month + 1, 1) > maxDate;
+
+  function shiftMonth(delta) {
+    setDisplayedMonth(({ year, month }) => {
+      const shifted = new Date(year, month + delta, 1);
+      return { year: shifted.getFullYear(), month: shifted.getMonth() };
+    });
+  }
+
+  function handleSelectDate(date) {
+    setSelectedDate(date);
+    // Los horarios cambian por día: la hora elegida deja de aplicar.
+    setTime('');
+    setFieldErrors((prev) => ({ ...prev, time: '' }));
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (submitting) return;
+
+    const errors = {};
+    if (!name.trim()) errors.name = 'Cuéntanos cómo te llamas.';
+    if (!device.trim()) errors.device = 'Dinos qué equipo traes (ej. iPhone 13).';
+    if (!PHONE_PATTERN.test(phone.replace(/\D/g, ''))) {
+      errors.phone = 'Ingresa un teléfono a 10 dígitos, sin espacios ni guiones.';
+    }
+    if (!time) errors.time = 'Elige un horario disponible.';
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const appointment = await addAppointment({
+        customerName: name.trim(),
+        customerPhone: phone.replace(/\D/g, ''),
+        // Liga la cita a la cuenta (si hay sesión) para mostrarla en /cuenta.
+        customerEmail: getCurrentUser()?.email ?? '',
+        serviceName: service.name,
+        servicePrice: service.price,
+        device: device.trim(),
+        date: formatDateKey(selectedDate),
+        time,
+        description: `${service.name} para ${device.trim()}, agendado desde el sitio.`,
+      });
+      setConfirmed(appointment);
+      toast.success(`Cita agendada: ${appointment.date} a las ${appointment.time}.`);
+    } catch (error) {
+      if (error.status === 409) {
+        // Otro cliente ganó el horario entre la carga y el envío.
+        toast.error('Ese horario acaba de ocuparse. Elige otro.');
+        setTime('');
+        setSlotsVersion((version) => version + 1);
+      } else {
+        toast.error('No se pudo agendar la cita. Inténtalo de nuevo.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (confirmed) {
+    return (
+      <Modal title="¡Cita agendada!" onClose={onClose}>
+        <div className="flex flex-col items-center gap-4 text-center">
+          <CheckCircle2 className="h-12 w-12 text-success-dark" />
+          <div>
+            <p className="font-semibold text-secondary">{confirmed.serviceName}</p>
+            <p className="text-sm text-muted">{confirmed.device}</p>
+            <p className="mt-1 text-sm text-muted">
+              {selectedDate.toLocaleDateString('es-MX', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+              })}{' '}
+              a las {confirmed.time}
+            </p>
+          </div>
+          <Alert variant="success">
+            Te esperamos en la tienda. Si no puedes asistir, avísanos por WhatsApp.
+          </Alert>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+          >
+            Entendido
+          </button>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title="Agendar una cita" onClose={onClose}>
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+        {services.length > 1 && (
+          <FormField
+            label="Servicio"
+            id="service"
+            name="service"
+            select={services.map((item) => ({ value: item.id, label: `${item.name} — $${item.price}` }))}
+            value={serviceId}
+            onChange={(event) => setServiceId(event.target.value)}
+          />
+        )}
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-secondary">Día</p>
+          <div className="rounded-card border border-secondary/10 p-3">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => shiftMonth(-1)}
+                disabled={prevDisabled}
+                aria-label="Mes anterior"
+                className="rounded-full p-1.5 text-secondary transition-colors enabled:hover:bg-bg-alt enabled:hover:text-primary-dark disabled:text-secondary/20"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <p className="text-sm font-semibold capitalize text-secondary">{monthLabel}</p>
+              <button
+                type="button"
+                onClick={() => shiftMonth(1)}
+                disabled={nextDisabled}
+                aria-label="Mes siguiente"
+                className="rounded-full p-1.5 text-secondary transition-colors enabled:hover:bg-bg-alt enabled:hover:text-primary-dark disabled:text-secondary/20"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-2 grid grid-cols-7 gap-y-1 text-center">
+              {WEEKDAY_HEADERS.map((header) => (
+                <span key={header} className="py-1 text-[11px] font-semibold uppercase text-muted">
+                  {header}
+                </span>
+              ))}
+              {monthCells.map((date, index) => {
+                if (!date) return <span key={`empty-${index}`} />;
+                const key = formatDateKey(date);
+                const outOfRange = key < todayKey || key > maxKey;
+                const isSelected = key === selectedKey;
+                const isToday = key === todayKey;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={outOfRange}
+                    onClick={() => handleSelectDate(date)}
+                    className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-primary-dark font-semibold text-white shadow-md'
+                        : outOfRange
+                          ? 'cursor-not-allowed text-secondary/20'
+                          : `text-secondary hover:bg-primary/10 hover:text-primary-dark ${
+                              isToday ? 'border border-primary-dark text-primary-dark' : ''
+                            }`
+                    }`}
+                  >
+                    {date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-secondary">
+            Horarios disponibles ·{' '}
+            <span className="capitalize">
+              {selectedDate.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </span>
+          </p>
+          {/* El servicio toma ~30 min, por eso las citas son cada media hora. */}
+          <p className="mb-3 text-xs text-muted">
+            La liberación toma alrededor de 30 minutos; sales con tu equipo listo el mismo día.
+          </p>
+          <div className="flex flex-col gap-3 rounded-card bg-bg-alt p-4">
+            {loadingSlots && (
+              <p className="flex items-center justify-center gap-2 py-6 text-sm text-muted">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Consultando horarios…
+              </p>
+            )}
+            {!loadingSlots && slotGroups.map(({ label, icon: GroupIcon, items }) => (
+              <div key={label}>
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <GroupIcon className="h-3.5 w-3.5" />
+                  {label}
+                </p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {items.map(({ time: slotTime, available }) => {
+                    const isActive = time === slotTime;
+                    return (
+                      <button
+                        key={slotTime}
+                        type="button"
+                        disabled={!available}
+                        onClick={() => {
+                          setTime(slotTime);
+                          setFieldErrors((prev) => ({ ...prev, time: '' }));
+                        }}
+                        className={`rounded-full px-2 py-1.5 text-sm font-semibold transition-all duration-150 ease-snappy ${
+                          isActive
+                            ? 'scale-105 bg-primary-dark text-white shadow-md'
+                            : available
+                              ? 'bg-white text-secondary shadow-sm hover:scale-105 hover:text-primary-dark hover:shadow'
+                              : 'cursor-not-allowed bg-transparent text-secondary/25'
+                        }`}
+                      >
+                        {slotTime}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center gap-4 border-t border-secondary/10 pt-3 text-xs text-muted">
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-full bg-white shadow-sm" />
+                Disponible
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-full border border-secondary/20 bg-transparent" />
+                Ocupado
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-full bg-primary-dark" />
+                Tu cita
+              </span>
+            </div>
+          </div>
+          {fieldErrors.time && (
+            <p className="mt-1.5 text-xs font-medium text-danger-dark">{fieldErrors.time}</p>
+          )}
+        </div>
+
+        <FormField
+          label="Nombre"
+          id="booking-name"
+          name="name"
+          type="text"
+          autoComplete="name"
+          error={fieldErrors.name}
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value);
+            setFieldErrors((prev) => ({ ...prev, name: '' }));
+          }}
+          placeholder="Tu nombre"
+        />
+        <FormField
+          label="Equipo a liberar"
+          id="booking-device"
+          name="device"
+          type="text"
+          error={fieldErrors.device}
+          value={device}
+          onChange={(event) => {
+            setDevice(event.target.value);
+            setFieldErrors((prev) => ({ ...prev, device: '' }));
+          }}
+          placeholder="Ej. iPhone 13 128GB"
+        />
+        <FormField
+          label="Teléfono"
+          id="booking-phone"
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          error={fieldErrors.phone}
+          value={phone}
+          onChange={(event) => {
+            setPhone(event.target.value);
+            setFieldErrors((prev) => ({ ...prev, phone: '' }));
+          }}
+          placeholder="653 000 0000"
+        />
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="mt-1 flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
+        >
+          {submitting ? (
+            <>
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+              Agendando cita…
+            </>
+          ) : (
+            <>
+              <CalendarClock className="h-4 w-4" />
+              Confirmar cita
+            </>
+          )}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
 export default function Services() {
   const services = useMemo(() => getAdminServices(), []);
   const primaryService = services[0];
-  const whatsappHref = whatsappLink('Hola, quiero información sobre el servicio de liberación por R-SIM.');
+  const [bookingOpen, setBookingOpen] = useState(false);
 
   return (
     <div>
@@ -49,15 +455,14 @@ export default function Services() {
               cualquier chip, en México o en el extranjero. Revisión y diagnóstico sin costo.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <a
-                href={whatsappHref}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={() => setBookingOpen(true)}
                 className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary-hover"
               >
-                <MessageCircle className="h-5 w-5" />
-                Preguntar por WhatsApp
-              </a>
+                <CalendarClock className="h-5 w-5" />
+                Agendar una cita
+              </button>
               <Link
                 to="/contacto"
                 className="flex items-center justify-center gap-2 rounded-card border border-secondary/20 px-6 py-3.5 text-base font-semibold text-secondary transition-colors hover:border-primary-dark hover:text-primary-dark"
@@ -137,6 +542,8 @@ export default function Services() {
           </Link>
         </div>
       </section>
+
+      {bookingOpen && <BookingModal services={services} onClose={() => setBookingOpen(false)} />}
     </div>
   );
 }

@@ -1,45 +1,59 @@
-import { products as catalogProducts } from './products';
+// Cliente del API de productos (server/index.js + SQLite). Antes era un CRUD
+// en memoria sembrado desde el catálogo mock; ahora los productos del admin
+// persisten en la base de datos y todas las funciones son async.
+// El id lo genera el servidor (slug del nombre + sufijo de tiempo).
+import { apiUrl } from '../lib/api';
 
-// Store en memoria para el CRUD del admin (sin backend todavía).
-// Se inicializa desde el catálogo público pero vive independiente: editar/eliminar
-// aquí no debe tocar los datos mock que usa el sitio público.
-let adminProducts = catalogProducts.map((product, index) => ({
-  id: product.id,
-  name: product.name,
-  category: product.category,
-  price: product.price,
-  stock: product.stock === 'agotado' ? 0 : 4 + ((index * 3) % 12),
-  status: product.status,
-  description: product.description ?? '',
-}));
-
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
+export async function getAdminProducts() {
+  const response = await fetch(apiUrl('productos'));
+  if (!response.ok) throw new Error('Error al consultar los productos');
+  return response.json();
 }
 
-export function getAdminProducts() {
-  return adminProducts;
+// Regresa null si el producto no existe (el form muestra "no encontrado").
+export async function getAdminProduct(id) {
+  const response = await fetch(apiUrl(`productos/${encodeURIComponent(id)}`));
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error('Error al consultar el producto');
+  return response.json();
 }
 
-export function getAdminProduct(id) {
-  return adminProducts.find((product) => product.id === id);
+export async function addAdminProduct(data) {
+  const response = await fetch(apiUrl('productos'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('No se pudo agregar el producto');
+  return response.json();
 }
 
-export function addAdminProduct(data) {
-  const newProduct = { id: `${slugify(data.name)}-${Date.now().toString(36)}`, ...data };
-  adminProducts = [newProduct, ...adminProducts];
-  return newProduct;
+export async function updateAdminProduct(id, data) {
+  const response = await fetch(apiUrl(`productos/${encodeURIComponent(id)}`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error('No se pudo actualizar el producto');
+  return response.json();
 }
 
-export function updateAdminProduct(id, data) {
-  adminProducts = adminProducts.map((product) => (product.id === id ? { ...product, ...data } : product));
+// Ancla (o desancla) el producto destacado que se muestra en el inicio.
+// El server garantiza que solo haya uno: destacar este desmarca el anterior.
+export async function setAdminProductFeatured(id, featured) {
+  const response = await fetch(apiUrl(`productos/${encodeURIComponent(id)}/destacado`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ featured }),
+  });
+  if (!response.ok) throw new Error('No se pudo actualizar el producto destacado');
+  return response.json();
 }
 
-export function deleteAdminProduct(id) {
-  adminProducts = adminProducts.filter((product) => product.id !== id);
+export async function deleteAdminProduct(id) {
+  const response = await fetch(apiUrl(`productos/${encodeURIComponent(id)}`), {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('No se pudo eliminar el producto');
+  return true;
 }

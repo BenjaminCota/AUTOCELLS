@@ -4,7 +4,7 @@ const variants = {
   disponible: 'bg-success/10 text-success-dark',
   agotado: 'bg-danger/10 text-danger-dark',
   pendiente: 'bg-primary/10 text-primary-dark',
-  entregado: 'bg-success/10 text-success-dark',
+  'entregado-vendido': 'bg-success/10 text-success-dark',
   cancelado: 'bg-danger/10 text-danger-dark',
 };
 

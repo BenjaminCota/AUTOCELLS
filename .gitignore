@@ -29,3 +29,6 @@ dist-ssr
 .impeccable
 skills-lock.json
 CLAUDE.md
+
+# Base de datos local (cada entorno genera la suya)
+server/*.db

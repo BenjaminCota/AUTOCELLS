@@ -3,6 +3,8 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Package, ClipboardList, Wrench, LogOut, Menu, X } from 'lucide-react';
 import Breadcrumb from '../components/Breadcrumb';
 import Logo from '../components/Logo';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useToast } from '../context/ToastContext';
 import { logout } from '../routes/auth';
 
 const navItems = [
@@ -14,17 +16,21 @@ const navItems = [
 
 export default function AdminLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const navigate = useNavigate();
+  const toast = useToast();
 
   function handleLogout() {
     logout();
+    setConfirmingLogout(false);
+    toast.info('Cerraste sesión del panel de administración.');
     navigate('/login');
   }
 
   return (
     <div className="flex min-h-screen bg-bg-alt">
       <aside className="hidden w-64 flex-col bg-secondary text-white md:flex">
-        <SidebarContent onLogout={handleLogout} />
+        <SidebarContent onLogout={() => setConfirmingLogout(true)} />
       </aside>
 
       {menuOpen && (
@@ -39,7 +45,10 @@ export default function AdminLayout() {
             >
               <X className="h-5 w-5" />
             </button>
-            <SidebarContent onLogout={handleLogout} onNavigate={() => setMenuOpen(false)} />
+            <SidebarContent
+              onLogout={() => setConfirmingLogout(true)}
+              onNavigate={() => setMenuOpen(false)}
+            />
           </aside>
         </div>
       )}
@@ -57,6 +66,17 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+
+      {confirmingLogout && (
+        <ConfirmDialog
+          title="Cerrar sesión"
+          confirmLabel="Cerrar sesión"
+          onConfirm={handleLogout}
+          onCancel={() => setConfirmingLogout(false)}
+        >
+          <p>¿Seguro que deseas cerrar sesión del panel de administración?</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

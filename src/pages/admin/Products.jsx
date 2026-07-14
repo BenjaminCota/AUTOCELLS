@@ -1,20 +1,67 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Smartphone, Star } from 'lucide-react';
 import AdminTable from '../../components/AdminTable';
 import Badge from '../../components/Badge';
-import Modal from '../../components/Modal';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { categoryIcons, priceFormatter } from '../../components/ProductCard';
-import { getAdminProducts, deleteAdminProduct } from '../../data/adminProducts';
+import { useToast } from '../../context/ToastContext';
+import { getAdminProducts, deleteAdminProduct, setAdminProductFeatured } from '../../data/adminProducts';
+
+// Mismo orden que regresa el API: el destacado anclado arriba, luego por fecha.
+// Se replica aquí para reacomodar la lista al destacar sin volver a pedirla.
+function sortFeaturedFirst(list) {
+  return [...list].sort(
+    (a, b) => Number(b.featured) - Number(a.featured) || b.createdAt.localeCompare(a.createdAt),
+  );
+}
 
 export default function Products() {
-  const [products, setProducts] = useState(() => getAdminProducts());
+  const toast = useToast();
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [pendingDelete, setPendingDelete] = useState(null);
 
-  function confirmDelete() {
-    deleteAdminProduct(pendingDelete.id);
-    setProducts((prev) => prev.filter((product) => product.id !== pendingDelete.id));
+  useEffect(() => {
+    let active = true;
+    getAdminProducts()
+      .then((data) => active && setProducts(data))
+      .catch(() => active && toast.error('No se pudieron cargar los productos. Recarga la página.'))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function toggleFeatured(product) {
+    const featured = !product.featured;
+    try {
+      await setAdminProductFeatured(product.id, featured);
+      // Solo puede haber un destacado: marcar este desmarca cualquier otro.
+      setProducts((prev) =>
+        sortFeaturedFirst(prev.map((p) => ({ ...p, featured: featured && p.id === product.id }))),
+      );
+      toast.success(
+        featured
+          ? `${product.name} ahora aparece destacado en el inicio.`
+          : `${product.name} ya no aparece destacado en el inicio.`,
+      );
+    } catch {
+      toast.error('No se pudo actualizar el producto destacado. Inténtalo de nuevo.');
+    }
+  }
+
+  async function confirmDelete() {
+    const target = pendingDelete;
     setPendingDelete(null);
+    try {
+      await deleteAdminProduct(target.id);
+      setProducts((prev) => prev.filter((product) => product.id !== target.id));
+      toast.success(`${target.name} se eliminó del catálogo.`);
+    } catch {
+      toast.error(`No se pudo eliminar ${target.name}. Inténtalo de nuevo.`);
+    }
   }
 
   return (
@@ -22,7 +69,11 @@ export default function Products() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Productos</h1>
-          <p className="mt-1 text-muted">{products.length} productos registrados</p>
+          <p className="mt-1 text-muted">
+            {loading
+              ? 'Cargando…'
+              : `${products.length} productos registrados. Usa la estrella para anclar el destacado que aparece en el inicio.`}
+          </p>
         </div>
         <Link
           to="/admin/productos/nuevo"
@@ -33,17 +84,34 @@ export default function Products() {
         </Link>
       </div>
 
-      <AdminTable headers={['Producto', 'Categoría', 'Precio', 'Stock', 'Estado', 'Acciones']}>
+      <AdminTable
+        headers={['Producto', 'Categoría', 'Precio', 'Stock', 'Estado', 'Acciones']}
+        emptyMessage={loading ? 'Cargando productos…' : 'Aún no hay productos. Agrega el primero.'}
+      >
         {products.map((product) => {
-          const Icon = categoryIcons[product.category];
+          // Fallback a Smartphone: los productos creados desde el admin no traen
+          // imagen y su categoría podría no estar en el mapa de íconos.
+          const Icon = categoryIcons[product.category] ?? Smartphone;
           return (
-            <tr key={product.id}>
+            <tr key={product.id} className={product.featured ? 'bg-primary/5' : undefined}>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-card bg-bg-alt">
-                    <Icon className="h-5 w-5 text-secondary/40" />
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-card bg-bg-alt">
+                    {product.image ? (
+                      <img src={product.image} alt="" className="h-full w-full object-contain p-1" />
+                    ) : (
+                      <Icon className="h-5 w-5 text-secondary/40" />
+                    )}
                   </span>
-                  <span className="font-medium text-secondary">{product.name}</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-secondary">{product.name}</span>
+                    {product.featured && (
+                      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary-dark">
+                        <Star className="h-3 w-3 fill-current" />
+                        Aparece en el inicio
+                      </span>
+                    )}
+                  </div>
                 </div>
               </td>
               <td className="px-4 py-3 text-secondary">{product.category}</td>
@@ -56,6 +124,23 @@ export default function Products() {
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    aria-label={
+                      product.featured
+                        ? `Quitar ${product.name} del inicio`
+                        : `Destacar ${product.name} en el inicio`
+                    }
+                    title={product.featured ? 'Quitar del inicio' : 'Destacar en el inicio'}
+                    onClick={() => toggleFeatured(product)}
+                    className={
+                      product.featured
+                        ? 'text-primary-dark'
+                        : 'text-secondary/60 transition-colors hover:text-primary-dark'
+                    }
+                  >
+                    <Star className={`h-4 w-4 ${product.featured ? 'fill-current' : ''}`} />
+                  </button>
                   <Link
                     to={`/admin/productos/${product.id}/editar`}
                     aria-label={`Editar ${product.name}`}
@@ -79,27 +164,18 @@ export default function Products() {
       </AdminTable>
 
       {pendingDelete && (
-        <Modal title="Eliminar producto" onClose={() => setPendingDelete(null)}>
-          <p className="text-secondary">
-            ¿Eliminar <span className="font-semibold">{pendingDelete.name}</span>? Esta acción no se puede deshacer.
+        <ConfirmDialog
+          title="Eliminar producto"
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        >
+          <p>
+            ¿Eliminar <span className="font-semibold">{pendingDelete.name}</span>? Esta acción no se
+            puede deshacer.
           </p>
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setPendingDelete(null)}
-              className="rounded-card border border-secondary/20 px-4 py-2 text-sm font-semibold text-secondary transition-colors hover:border-secondary/40"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={confirmDelete}
-              className="rounded-card bg-danger-dark px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-danger-dark/90"
-            >
-              Eliminar
-            </button>
-          </div>
-        </Modal>
+        </ConfirmDialog>
       )}
     </div>
   );

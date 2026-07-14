@@ -11,9 +11,10 @@ export default function Modal({ title, children, onClose }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    // z-[80]: por encima del drawer del carrito (z-70) y debajo de los toasts (z-90).
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div role="dialog" aria-modal="true" className="relative w-full max-w-md rounded-card bg-white p-6 shadow-lg">
+      <div role="dialog" aria-modal="true" className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-card bg-white p-6 shadow-lg">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-secondary">{title}</h2>
           <button

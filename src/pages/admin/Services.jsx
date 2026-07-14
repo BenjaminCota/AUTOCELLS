@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Save } from 'lucide-react';
 import AdminTable from '../../components/AdminTable';
-import Modal from '../../components/Modal';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import FormField from '../../components/FormField';
 import Alert from '../../components/Alert';
+import { useToast } from '../../context/ToastContext';
 import { addAdminService, deleteAdminService, getAdminServices, updateAdminService } from '../../data/adminServices';
 
 const emptyForm = {
@@ -14,6 +14,7 @@ const emptyForm = {
 };
 
 export default function Services() {
+  const toast = useToast();
   const [services, setServices] = useState(() => getAdminServices());
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
@@ -70,9 +71,11 @@ export default function Services() {
     if (isEditing) {
       updateAdminService(editingId, payload);
       setServices(getAdminServices());
+      toast.success(`Los cambios de ${payload.name} se guardaron.`);
     } else {
       const created = addAdminService(payload);
       setServices((prev) => [created, ...prev]);
+      toast.success(`${created.name} se agregó a los servicios.`);
     }
 
     resetForm();
@@ -81,6 +84,7 @@ export default function Services() {
   function confirmDelete() {
     deleteAdminService(pendingDelete.id);
     setServices((prev) => prev.filter((service) => service.id !== pendingDelete.id));
+    toast.success(`${pendingDelete.name} se eliminó de los servicios.`);
     setPendingDelete(null);
   }
 
@@ -191,19 +195,18 @@ export default function Services() {
       </div>
 
       {pendingDelete && (
-        <Modal title="Eliminar servicio" onClose={() => setPendingDelete(null)}>
-          <p className="text-secondary">
-            ¿Eliminar <span className="font-semibold">{pendingDelete.name}</span>? Esta acción no se puede deshacer.
+        <ConfirmDialog
+          title="Eliminar servicio"
+          confirmLabel="Eliminar"
+          danger
+          onConfirm={confirmDelete}
+          onCancel={() => setPendingDelete(null)}
+        >
+          <p>
+            ¿Eliminar <span className="font-semibold">{pendingDelete.name}</span>? Esta acción no se
+            puede deshacer.
           </p>
-          <div className="mt-6 flex justify-end gap-3">
-            <button type="button" onClick={() => setPendingDelete(null)} className="rounded-card border border-secondary/20 px-4 py-2 text-sm font-semibold text-secondary transition-colors hover:border-secondary/40">
-              Cancelar
-            </button>
-            <button type="button" onClick={confirmDelete} className="rounded-card bg-danger-dark px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-danger-dark/90">
-              Eliminar
-            </button>
-          </div>
-        </Modal>
+        </ConfirmDialog>
       )}
     </div>
   );

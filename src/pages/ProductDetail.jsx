@@ -1,37 +1,53 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { MessageCircle, ShoppingCart, Check, PackageSearch } from 'lucide-react';
-import { products } from '../data/products';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ShoppingBag, ShoppingCart, Check, PackageSearch } from 'lucide-react';
+import { useCatalog } from '../data/products';
 import ProductCard, { categoryIcons, priceFormatter } from '../components/ProductCard';
 import Badge from '../components/Badge';
-import { whatsappLink } from '../data/store';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 
 const colorSwatches = {
   Negro: '#1d1d1f',
   Blanco: '#f5f5f7',
   Azul: '#2bb3d3',
+  'Azul Marino': '#1e3a5f',
   Rojo: '#ef4444',
   Verde: '#22c55e',
+  Gris: '#8e8e93',
+  Morado: '#a78bfa',
   Transparente: '#e5e4e7',
 };
 
 export default function ProductDetail() {
   const { productId } = useParams();
-  const { addItem } = useCart();
+  const navigate = useNavigate();
+  const { addItem, closeCart } = useCart();
+  const toast = useToast();
+  const { products, loaded } = useCatalog();
   const product = products.find((item) => item.id === productId);
 
   const [selectedStorage, setSelectedStorage] = useState(product?.storage?.[0]);
   const [selectedColor, setSelectedColor] = useState(product?.colors?.[0]);
+  const [selectedImage, setSelectedImage] = useState(0);
   const [added, setAdded] = useState(false);
 
   // El router no remonta este componente en una navegación solo-de-parámetro
-  // (catalogo/:category/:productId), así que la selección debe resetearse a mano.
+  // (catalogo/:category/:productId), así que la selección debe resetearse a
+  // mano. Depende de `product` (no de productId): los productos del admin
+  // llegan async y la selección inicial debe aplicarse también en ese momento.
   useEffect(() => {
     setSelectedStorage(product?.storage?.[0]);
     setSelectedColor(product?.colors?.[0]);
+    setSelectedImage(0);
     setAdded(false);
-  }, [productId]);
+  }, [product]);
+
+  // Mientras el API no responde no se sabe si el producto existe (los del
+  // admin llegan async); mostrar "no encontrado" aquí sería un falso negativo.
+  if (!product && !loaded) {
+    return <p className="py-16 text-center text-muted">Cargando producto…</p>;
+  }
 
   if (!product) {
     return (
@@ -54,21 +70,27 @@ export default function ProductDetail() {
   }
 
   const Icon = categoryIcons[product.category] ?? ShoppingCart;
+  const images = product.images ?? (product.image ? [product.image] : []);
   const relatedProducts = products
     .filter((item) => item.category === product.category && item.id !== product.id)
     .slice(0, 4);
-
-  const whatsappHref = whatsappLink(
-    `Hola, me interesa el ${product.name} (${priceFormatter.format(product.price)}). ¿Sigue disponible?`,
-  );
 
   const isAgotado = product.stock === 'agotado';
 
   function handleAddToCart() {
     // Agrega la variante seleccionada; el contexto abre el drawer como confirmación.
     addItem(product, { storage: selectedStorage, color: selectedColor });
+    toast.success(`${product.name} agregado al carrito.`);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  }
+
+  function handleBuyNow() {
+    // Compra directa: al carrito y al formulario de pago, sin pasar por el
+    // drawer (addItem lo abre, por eso se cierra antes de navegar).
+    addItem(product, { storage: selectedStorage, color: selectedColor });
+    closeCart();
+    navigate('/comprar');
   }
 
   return (
@@ -77,25 +99,41 @@ export default function ProductDetail() {
         {/* Galería */}
         <div>
           <div className="flex aspect-square items-center justify-center rounded-card bg-bg-alt">
-            <Icon className="h-32 w-32 text-secondary/30" strokeWidth={1.25} />
+            {images.length > 0 ? (
+              <img
+                src={images[selectedImage] ?? images[0]}
+                alt={product.name}
+                className="h-full w-full object-contain p-8"
+              />
+            ) : (
+              <Icon className="h-32 w-32 text-secondary/30" strokeWidth={1.25} />
+            )}
           </div>
-          <div className="mt-3 grid grid-cols-4 gap-3">
-            {[0, 1, 2, 3].map((index) => (
-              <button
-                key={index}
-                type="button"
-                className="flex aspect-square items-center justify-center rounded-card border-2 border-primary/30 bg-bg-alt transition-colors hover:border-primary"
-              >
-                <Icon className="h-8 w-8 text-secondary/30" strokeWidth={1.25} />
-              </button>
-            ))}
-          </div>
+          {images.length > 1 && (
+            <div className="mt-3 grid grid-cols-4 gap-3">
+              {images.map((image, index) => (
+                <button
+                  key={image}
+                  type="button"
+                  aria-label={`Ver imagen ${index + 1} de ${product.name}`}
+                  onClick={() => setSelectedImage(index)}
+                  className={`flex aspect-square items-center justify-center rounded-card border-2 bg-bg-alt transition-colors ${
+                    selectedImage === index ? 'border-primary-dark' : 'border-primary/30 hover:border-primary'
+                  }`}
+                >
+                  <img src={image} alt="" className="h-full w-full object-contain p-2" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info */}
         <div className="flex flex-col gap-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-            {product.category} · {product.brand}
+            {/* Solo los celulares llevan marca (los del admin no la piden en otras categorías). */}
+            {product.category}
+            {product.brand ? ` · ${product.brand}` : ''}
           </p>
           <h1 className="text-2xl font-bold text-secondary sm:text-3xl">{product.name}</h1>
 
@@ -164,15 +202,15 @@ export default function ProductDetail() {
               {isAgotado ? null : added ? <Check className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
               {isAgotado ? 'Producto agotado' : added ? 'Agregado al carrito' : 'Agregar al carrito'}
             </button>
-            <a
-              href={whatsappHref}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-center gap-2 rounded-card border border-success-dark px-6 py-3.5 text-base font-semibold text-success-dark transition-colors hover:bg-success/10"
+            <button
+              type="button"
+              onClick={handleBuyNow}
+              disabled={isAgotado}
+              className="flex items-center justify-center gap-2 rounded-card border border-success-dark px-6 py-3.5 text-base font-semibold text-success-dark transition-colors enabled:hover:bg-success/10 disabled:cursor-not-allowed disabled:border-secondary/20 disabled:text-secondary/40"
             >
-              <MessageCircle className="h-5 w-5" />
-              Preguntar por WhatsApp
-            </a>
+              <ShoppingBag className="h-5 w-5" />
+              Comprar
+            </button>
           </div>
         </div>
       </div>

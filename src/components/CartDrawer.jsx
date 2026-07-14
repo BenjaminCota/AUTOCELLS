@@ -1,15 +1,53 @@
-import { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { X, ShoppingCart, Minus, Plus, Trash2, MessageCircle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { X, ShoppingCart, Minus, Plus, Trash2, ShoppingBag, LogIn } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
+import ConfirmDialog from './ConfirmDialog';
 import { categoryIcons, priceFormatter } from './ProductCard';
-import { whatsappLink } from '../data/store';
+import { isAuthenticated } from '../routes/auth';
 
 // Panel deslizante desde la derecha. Siempre está montado: abrir/cerrar solo
 // alterna clases, así la transición de salida también se ve (translate-x-full).
 export default function CartDrawer() {
   const { items, total, count, isOpen, setQty, removeItem, clearCart, closeCart } = useCart();
   const panelRef = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const toast = useToast();
+  const [confirmingClear, setConfirmingClear] = useState(false);
+
+  function handleRemove(line) {
+    removeItem(line.key);
+    toast.info(`${line.product.name} se eliminó del carrito.`);
+  }
+
+  function handleDecrement(line) {
+    // Bajar de 1 elimina el renglón; avisar igual que con el botón de basura.
+    if (line.qty === 1) {
+      handleRemove(line);
+      return;
+    }
+    setQty(line.key, line.qty - 1);
+  }
+
+  function handleClearCart() {
+    clearCart();
+    setConfirmingClear(false);
+    toast.info('Se vació tu carrito.');
+  }
+
+  // Pagar requiere sesión: sin ella se manda al login, que al terminar
+  // regresa a esta misma página y reabre el carrito (state.reopenCart).
+  function handleCheckoutLogin() {
+    closeCart();
+    navigate('/login', { state: { from: location, reopenCart: true } });
+  }
+
+  function handleCheckout() {
+    closeCart();
+    navigate('/comprar');
+  }
 
   // Cerrar con Escape y bloquear el scroll del fondo mientras está abierto.
   useEffect(() => {
@@ -25,15 +63,6 @@ export default function CartDrawer() {
       document.body.style.overflow = '';
     };
   }, [isOpen, closeCart]);
-
-  const orderMessage = [
-    'Hola, quiero hacer este pedido:',
-    ...items.map((line) => {
-      const variant = [line.storage, line.color].filter(Boolean).join(', ');
-      return `• ${line.qty}× ${line.product.name}${variant ? ` (${variant})` : ''} — ${priceFormatter.format(line.subtotal)}`;
-    }),
-    `Total: ${priceFormatter.format(total)}`,
-  ].join('\n');
 
   return (
     <>
@@ -102,8 +131,12 @@ export default function CartDrawer() {
                 const variant = [line.storage, line.color].filter(Boolean).join(' · ');
                 return (
                   <li key={line.key} className="flex gap-3 py-4">
-                    <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-card bg-bg-alt">
-                      <Icon className="h-7 w-7 text-secondary/30" strokeWidth={1.25} />
+                    <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-card bg-bg-alt">
+                      {line.product.image ? (
+                        <img src={line.product.image} alt="" className="h-full w-full object-contain p-1.5" />
+                      ) : (
+                        <Icon className="h-7 w-7 text-secondary/30" strokeWidth={1.25} />
+                      )}
                     </span>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <p className="truncate text-sm font-semibold text-secondary">{line.product.name}</p>
@@ -113,7 +146,7 @@ export default function CartDrawer() {
                           <button
                             type="button"
                             aria-label="Quitar uno"
-                            onClick={() => setQty(line.key, line.qty - 1)}
+                            onClick={() => handleDecrement(line)}
                             className="p-1.5 text-secondary transition-colors hover:text-primary-dark"
                           >
                             <Minus className="h-3.5 w-3.5" />
@@ -138,7 +171,7 @@ export default function CartDrawer() {
                     <button
                       type="button"
                       aria-label={`Quitar ${line.product.name}`}
-                      onClick={() => removeItem(line.key)}
+                      onClick={() => handleRemove(line)}
                       className="self-start p-1 text-secondary/50 transition-colors hover:text-danger-dark"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -154,20 +187,35 @@ export default function CartDrawer() {
                 <span className="text-xl font-bold text-secondary">{priceFormatter.format(total)}</span>
               </div>
               <p className="mt-1 text-xs text-muted">
-                El pedido se coordina por WhatsApp: pago y entrega en tienda.
+                Pago en efectivo al recoger en tienda.
               </p>
-              <a
-                href={whatsappLink(orderMessage)}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 flex items-center justify-center gap-2 rounded-card bg-primary-dark px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-              >
-                <MessageCircle className="h-5 w-5" />
-                Pedir por WhatsApp
-              </a>
+              {isAuthenticated() ? (
+                <button
+                  type="button"
+                  onClick={handleCheckout}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-card bg-primary-dark px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+                >
+                  <ShoppingBag className="h-5 w-5" />
+                  Comprar
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCheckoutLogin}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-card bg-primary-dark px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+                  >
+                    <LogIn className="h-5 w-5" />
+                    Inicia sesión para pedir
+                  </button>
+                  <p className="mt-2 text-center text-xs text-muted">
+                    Necesitas una cuenta para completar tu pedido.
+                  </p>
+                </>
+              )}
               <button
                 type="button"
-                onClick={clearCart}
+                onClick={() => setConfirmingClear(true)}
                 className="mt-2 w-full rounded-card px-5 py-2 text-xs font-semibold text-muted transition-colors hover:text-danger-dark"
               >
                 Vaciar carrito
@@ -176,6 +224,21 @@ export default function CartDrawer() {
           </>
         )}
       </aside>
+
+      {confirmingClear && (
+        <ConfirmDialog
+          title="Vaciar carrito"
+          confirmLabel="Vaciar carrito"
+          danger
+          onConfirm={handleClearCart}
+          onCancel={() => setConfirmingClear(false)}
+        >
+          <p>
+            Se eliminarán <span className="font-semibold">{count}</span>{' '}
+            {count === 1 ? 'producto' : 'productos'} de tu carrito. ¿Deseas continuar?
+          </p>
+        </ConfirmDialog>
+      )}
     </>
   );
 }

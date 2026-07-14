@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { products } from '../data/products';
+import { useCatalog } from '../data/products';
 
-// Carrito 100% frontend (aún no hay backend): se guarda en localStorage para
-// sobrevivir recargas. Cuando exista la base de datos, este contexto es el
-// único lugar que hay que conectar al API (src/lib/api.js).
+// El carrito vive 100% en el frontend (localStorage) para sobrevivir recargas;
+// solo el pedido final se manda al API. Los renglones guardan la forma cruda
+// {id, storage, color, qty} y se enriquecen contra el catálogo al renderizar.
 const STORAGE_KEY = 'autocells:cart';
 
 const CartContext = createContext(null);
@@ -18,14 +18,17 @@ function readStoredItems() {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
-    // Descarta renglones de productos que ya no existen en el catálogo.
-    return parsed.filter((item) => item?.qty > 0 && products.some((p) => p.id === item.id));
+    // Aquí solo se valida la forma: el catálogo (incluye productos del admin)
+    // llega async del API, así que borrar renglones "desconocidos" en este punto
+    // perdería líneas válidas. Se ocultan al renderizar (ver `detailed`).
+    return parsed.filter((item) => item?.qty > 0);
   } catch {
     return [];
   }
 }
 
 export function CartProvider({ children }) {
+  const { products } = useCatalog();
   const [items, setItems] = useState(readStoredItems);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -38,9 +41,12 @@ export function CartProvider({ children }) {
   }, [items]);
 
   const value = useMemo(() => {
-    const detailed = items.map((item) => {
+    // Renglones cuyo producto no está en el catálogo (fue eliminado, o el API
+    // aún no responde) se ocultan del render sin borrarse del storage.
+    const detailed = items.flatMap((item) => {
       const product = products.find((p) => p.id === item.id);
-      return { ...item, key: lineKey(item), product, subtotal: product.price * item.qty };
+      if (!product) return [];
+      return [{ ...item, key: lineKey(item), product, subtotal: product.price * item.qty }];
     });
     const total = detailed.reduce((sum, line) => sum + line.subtotal, 0);
     const count = detailed.reduce((sum, line) => sum + line.qty, 0);
@@ -84,7 +90,7 @@ export function CartProvider({ children }) {
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
     };
-  }, [items, isOpen]);
+  }, [items, isOpen, products]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Save, FileSearch, Smartphone, Shield, BatteryCharging, Cable, Sparkles } from 'lucide-react';
 import FormField from '../../components/FormField';
 import Alert from '../../components/Alert';
 import Modal from '../../components/Modal';
+import { useToast } from '../../context/ToastContext';
 import { addAdminProduct, getAdminProduct, updateAdminProduct } from '../../data/adminProducts';
 
 const categoryOptions = ['Celular', 'Fundas', 'Cargadores', 'Accesorios', 'Protector de pantalla'];
@@ -76,6 +77,9 @@ const caseCompatibilityOptions = [
       'iPhone 16',
       'iPhone 16 Pro',
       'iPhone 16 Pro Max',
+      'iPhone 17',
+      'iPhone 17 Pro',
+      'iPhone 17 Pro Max',
     ],
   },
   { group: 'Samsung', models: ['Samsung Galaxy S24', 'Samsung Galaxy S24 Ultra', 'Samsung Galaxy A54', 'Samsung Galaxy A25'] },
@@ -120,7 +124,7 @@ function getInitialForm(existingProduct) {
 
   return {
     name: existingProduct.name ?? '',
-    category: existingProduct.category === 'iPhones' ? 'Celular' : existingProduct.category ?? categoryOptions[0],
+    category: existingProduct.category === 'Celulares' ? 'Celular' : existingProduct.category ?? categoryOptions[0],
     price: existingProduct.price ?? '',
     stock: existingProduct.stock ?? '',
     status: existingProduct.status ?? 'nuevo',
@@ -139,16 +143,48 @@ function getInitialForm(existingProduct) {
 export default function ProductForm() {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const isEditing = Boolean(productId);
-  const existingProduct = isEditing ? getAdminProduct(productId) : null;
 
-  const [form, setForm] = useState(() => getInitialForm(existingProduct));
-  const [photoNames, setPhotoNames] = useState([]);
+  const [existingProduct, setExistingProduct] = useState(null);
+  // 'missing' cubre tanto el 404 como un error de red: en ambos casos no hay
+  // producto que editar y se muestra la misma pantalla de salida.
+  const [loadStatus, setLoadStatus] = useState(isEditing ? 'loading' : 'ready');
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  // Fotos como data URLs (no object URLs): un object URL muere al recargar y no
+  // sirve para persistir en el store; el data URL alimenta tanto la vista previa
+  // como el `image` que se guarda con el producto.
+  const [photos, setPhotos] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  if (isEditing && !existingProduct) {
+  useEffect(() => {
+    if (!isEditing) return undefined;
+    let active = true;
+    getAdminProduct(productId)
+      .then((product) => {
+        if (!active) return;
+        if (!product) {
+          setLoadStatus('missing');
+          return;
+        }
+        setExistingProduct(product);
+        setForm(getInitialForm(product));
+        setLoadStatus('ready');
+      })
+      .catch(() => active && setLoadStatus('missing'));
+    return () => {
+      active = false;
+    };
+  }, [productId, isEditing]);
+
+  if (isEditing && loadStatus === 'loading') {
+    return <p className="py-16 text-center text-muted">Cargando producto…</p>;
+  }
+
+  if (isEditing && loadStatus === 'missing') {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
         <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-danger/10">
@@ -165,6 +201,7 @@ export default function ProductForm() {
     );
   }
 
+  const photoPreview = photos[0]?.dataUrl ?? null;
   const isCellphoneCategory = form.category === 'Celular';
   const isCaseCategory = form.category === 'Fundas';
   const isChargerCategory = form.category === 'Cargadores';
@@ -179,7 +216,29 @@ export default function ProductForm() {
   }
 
   function handlePhotosChange(event) {
-    setPhotoNames(Array.from(event.target.files).map((file) => file.name));
+    const files = Array.from(event.target.files);
+    Promise.all(
+      files.map(
+        (file) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve({ name: file.name, dataUrl: reader.result });
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+          }),
+      ),
+    )
+      .then((loaded) => {
+        setPhotos(loaded);
+        setFieldErrors((prev) => ({ ...prev, photos: '' }));
+      })
+      .catch(() => {
+        setPhotos([]);
+        setFieldErrors((prev) => ({
+          ...prev,
+          photos: 'No se pudieron leer las imágenes. Intenta de nuevo con otros archivos.',
+        }));
+      });
   }
 
   function validateForm() {
@@ -205,7 +264,10 @@ export default function ProductForm() {
 
     return {
       name: form.name,
-      category: form.category,
+      // El form muestra "Celular" en singular, pero la categoría canónica de la
+      // data es "Celulares" (products.js / categoryIcons); guardar el singular
+      // rompía el ícono en la tabla de productos del admin.
+      category: form.category === 'Celular' ? 'Celulares' : form.category,
       price: Number(form.price),
       stock: Number(form.stock),
       status: form.status,
@@ -222,6 +284,11 @@ export default function ProductForm() {
         : {}),
       ...(isChargerCategory ? { chargerInput: form.chargerInput } : {}),
       ...(isScreenProtectorCategory ? { screenProtectorType: form.screenProtectorType, privacy: form.privacy } : {}),
+      // Al editar sin subir fotos nuevas se omite la clave: updateAdminProduct
+      // hace merge y así conserva la imagen que ya tenía el producto.
+      ...(photos.length > 0
+        ? { image: photos[0].dataUrl, images: photos.map((photo) => photo.dataUrl) }
+        : {}),
     };
   }
 
@@ -234,21 +301,29 @@ export default function ProductForm() {
     setShowConfirmModal(true);
   }
 
-  function confirmSave() {
+  async function confirmSave() {
     const payload = validateForm();
     if (!payload) {
       setShowConfirmModal(false);
       return;
     }
 
-    if (isEditing) {
-      updateAdminProduct(productId, payload);
-    } else {
-      addAdminProduct(payload);
+    setSaving(true);
+    try {
+      if (isEditing) {
+        await updateAdminProduct(productId, payload);
+        toast.success(`Los cambios de ${payload.name} se guardaron.`);
+      } else {
+        await addAdminProduct(payload);
+        toast.success(`${payload.name} se agregó al catálogo.`);
+      }
+      navigate('/admin/productos');
+    } catch {
+      toast.error('No se pudo guardar el producto. Inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
+      setShowConfirmModal(false);
     }
-
-    setShowConfirmModal(false);
-    navigate('/admin/productos');
   }
 
   return (
@@ -257,7 +332,9 @@ export default function ProductForm() {
         {isEditing ? 'Editar producto' : 'Nuevo producto'}
       </h1>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+      {/* lg (no xl): en laptops comunes la vista previa debe quedar a un lado
+          del formulario, no debajo — es el punto de la vista previa en vivo. */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 rounded-card border border-secondary/10 bg-white p-6">
           {formError && <Alert variant="error">{formError}</Alert>}
 
@@ -357,6 +434,17 @@ export default function ProductForm() {
                   value={form.price}
                   onChange={handleChange}
                 />
+                <FormField
+                  label="Stock"
+                  id="stock"
+                  name="stock"
+                  type="number"
+                  min="0"
+                  step="1"
+                  error={fieldErrors.stock}
+                  value={form.stock}
+                  onChange={handleChange}
+                />
               </div>
 
               <div>
@@ -435,6 +523,17 @@ export default function ProductForm() {
                 value={form.price}
                 onChange={handleChange}
               />
+              <FormField
+                label="Stock"
+                id="stock"
+                name="stock"
+                type="number"
+                min="0"
+                step="1"
+                error={fieldErrors.stock}
+                value={form.stock}
+                onChange={handleChange}
+              />
             </div>
           ) : isScreenProtectorCategory ? (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -452,6 +551,28 @@ export default function ProductForm() {
                 name="privacy"
                 select={privacyOptions}
                 value={form.privacy}
+                onChange={handleChange}
+              />
+              <FormField
+                label="Precio (MXN)"
+                id="price"
+                name="price"
+                type="number"
+                min="0"
+                step="1"
+                error={fieldErrors.price}
+                value={form.price}
+                onChange={handleChange}
+              />
+              <FormField
+                label="Stock"
+                id="stock"
+                name="stock"
+                type="number"
+                min="0"
+                step="1"
+                error={fieldErrors.stock}
+                value={form.stock}
                 onChange={handleChange}
               />
             </div>
@@ -524,11 +645,14 @@ export default function ProductForm() {
               onChange={handlePhotosChange}
               className="block w-full text-sm text-secondary file:mr-3 file:rounded-card file:border-0 file:bg-primary-dark file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:transition-colors hover:file:bg-primary-hover"
             />
-            {photoNames.length > 0 && (
+            {fieldErrors.photos && (
+              <p className="mt-1.5 text-xs font-medium text-danger-dark">{fieldErrors.photos}</p>
+            )}
+            {photos.length > 0 && (
               <ul className="mt-2 flex flex-wrap gap-2">
-                {photoNames.map((name) => (
-                  <li key={name} className="rounded-full bg-bg-alt px-3 py-1 text-xs text-muted">
-                    {name}
+                {photos.map((photo) => (
+                  <li key={photo.name} className="rounded-full bg-bg-alt px-3 py-1 text-xs text-muted">
+                    {photo.name}
                   </li>
                 ))}
               </ul>
@@ -562,7 +686,13 @@ export default function ProductForm() {
 
           <div className="mt-4 overflow-hidden rounded-card border border-secondary/10 bg-bg-alt">
             <div className="relative flex aspect-square items-center justify-center bg-white/70">
-              <PreviewIcon className="h-16 w-16 text-secondary/30" strokeWidth={1.5} />
+              {photoPreview ? (
+                <img src={photoPreview} alt="Vista previa del producto" className="h-full w-full object-contain p-4" />
+              ) : existingProduct?.image ? (
+                <img src={existingProduct.image} alt="Imagen actual del producto" className="h-full w-full object-contain p-4" />
+              ) : (
+                <PreviewIcon className="h-16 w-16 text-secondary/30" strokeWidth={1.5} />
+              )}
               <span className="absolute left-3 top-3 rounded-full bg-primary-dark/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
                 {form.status === 'nuevo' ? 'Nuevo' : 'Seminuevo'}
               </span>
@@ -615,9 +745,10 @@ export default function ProductForm() {
             <button
               type="button"
               onClick={confirmSave}
-              className="rounded-card bg-primary-dark px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+              disabled={saving}
+              className="rounded-card bg-primary-dark px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Confirmar
+              {saving ? 'Guardando…' : 'Confirmar'}
             </button>
           </div>
         </Modal>

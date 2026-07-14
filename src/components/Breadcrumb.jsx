@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { breadcrumbNameMap } from '../routes/breadcrumbConfig';
+import { useCatalog } from '../data/products';
 
 function humanize(segment) {
   return decodeURIComponent(segment)
@@ -10,13 +11,19 @@ function humanize(segment) {
 // Se genera automáticamente a partir de la ruta actual. No se renderiza en Home.
 export default function Breadcrumb() {
   const { pathname } = useLocation();
+  const { products } = useCatalog();
   const segments = pathname.split('/').filter(Boolean);
 
   if (segments.length === 0) return null;
 
+  // Los ids de productos del admin no están en el mapa estático (los genera el
+  // server), así que se resuelven contra el catálogo cargado antes de humanizar.
   const crumbs = segments.map((segment, index) => ({
     path: '/' + segments.slice(0, index + 1).join('/'),
-    label: breadcrumbNameMap[segment] ?? humanize(segment),
+    label:
+      breadcrumbNameMap[segment] ??
+      products.find((product) => product.id === segment)?.name ??
+      humanize(segment),
     isLast: index === segments.length - 1,
   }));
 

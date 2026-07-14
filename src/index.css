@@ -41,6 +41,9 @@
      La dirección la decide MainLayout comparando el orden de las rutas. */
   --animate-page-in-right: page-in-right 450ms var(--ease-snappy) both;
   --animate-page-in-left: page-in-left 450ms var(--ease-snappy) both;
+
+  /* Entrada de las notificaciones toast (ToastContext). */
+  --animate-toast-in: toast-in 300ms var(--ease-snappy) both;
 }
 
 body {
@@ -123,6 +126,17 @@ body {
   }
 }
 
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Con prefers-reduced-motion, mismas keyframes sin transform: solo fade. */
 @media (prefers-reduced-motion: reduce) {
   @keyframes hero-in {
@@ -172,6 +186,15 @@ body {
   }
 
   @keyframes page-in-left {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes toast-in {
     from {
       opacity: 0;
     }

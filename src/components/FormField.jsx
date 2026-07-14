@@ -21,6 +21,14 @@ export default function FormField({ label, id, textarea = false, select, error, 
           aria-describedby={errorId}
           {...props}
         >
+          {/* Con value='' un select controlado muestra la primera opción como
+              si estuviera elegida sin estarlo (y la validación falla). El
+              placeholder deshabilitado hace visible que falta seleccionar. */}
+          {props.value === '' && (
+            <option value="" disabled>
+              Selecciona una opción
+            </option>
+          )}
           {select.map((option) => {
             const value = typeof option === 'string' ? option : option.value;
             const optionLabel = typeof option === 'string' ? option : option.label;

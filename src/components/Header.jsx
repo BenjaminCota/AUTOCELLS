@@ -1,8 +1,75 @@
 import { useState } from 'react';
-import { NavLink, Link } from 'react-router-dom';
-import { Menu, X, ShoppingCart } from 'lucide-react';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { Menu, X, ShoppingCart, CircleUserRound, LogOut } from 'lucide-react';
 import Logo from './Logo';
+import ConfirmDialog from './ConfirmDialog';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
+import { getCurrentUser, logout } from '../routes/auth';
+
+// Saludo + botón de salir cuando hay sesión; botón de login cuando no.
+// El Header se re-renderiza en cada navegación (MainLayout usa useLocation),
+// así que leer la sesión de localStorage en render es suficiente.
+function AccountActions({ onNavigate }) {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const user = getCurrentUser();
+
+  function handleLogout() {
+    logout();
+    setConfirmingLogout(false);
+    onNavigate?.();
+    toast.info('Cerraste sesión. ¡Vuelve pronto!');
+    navigate('/');
+  }
+
+  if (!user) {
+    return (
+      <Link
+        to="/login"
+        onClick={onNavigate}
+        className="rounded-card bg-primary-dark px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+      >
+        Iniciar sesión
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      {/* El nombre lleva a Mi cuenta (o al panel, si es admin). */}
+      <Link
+        to={user.role === 'admin' ? '/admin/dashboard' : '/cuenta'}
+        onClick={onNavigate}
+        className="flex items-center gap-1.5 text-sm font-semibold text-secondary transition-colors hover:text-primary-dark"
+      >
+        <CircleUserRound className="h-5 w-5 text-primary-dark" />
+        {user.name.split(' ')[0]}
+      </Link>
+      <button
+        type="button"
+        onClick={() => setConfirmingLogout(true)}
+        aria-label="Cerrar sesión"
+        className="flex items-center gap-1 rounded-card border border-secondary/20 px-3 py-2 text-sm font-semibold text-secondary transition-colors hover:border-primary-dark hover:text-primary-dark"
+      >
+        <LogOut className="h-4 w-4" />
+        Salir
+      </button>
+
+      {confirmingLogout && (
+        <ConfirmDialog
+          title="Cerrar sesión"
+          confirmLabel="Cerrar sesión"
+          onConfirm={handleLogout}
+          onCancel={() => setConfirmingLogout(false)}
+        >
+          <p>¿Seguro que deseas cerrar sesión?</p>
+        </ConfirmDialog>
+      )}
+    </div>
+  );
+}
 
 // Botón del carrito con badge de conteo; abre el drawer (CartDrawer en MainLayout).
 function CartButton({ count, onClick }) {
@@ -60,12 +127,7 @@ export default function Header() {
 
         <div className="hidden items-center gap-4 md:flex">
           <CartButton count={count} onClick={openCart} />
-          <Link
-            to="/login"
-            className="rounded-card bg-primary-dark px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-          >
-            Iniciar sesión
-          </Link>
+          <AccountActions />
         </div>
 
         <button
@@ -103,13 +165,7 @@ export default function Header() {
                 openCart();
               }}
             />
-            <Link
-              to="/login"
-              onClick={() => setMenuOpen(false)}
-              className="rounded-card bg-primary-dark px-4 py-2 text-sm font-semibold text-white"
-            >
-              Iniciar sesión
-            </Link>
+            <AccountActions onNavigate={() => setMenuOpen(false)} />
           </div>
         </nav>
       )}

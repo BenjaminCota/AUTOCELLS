@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import { CartProvider } from './context/CartContext';
+import { ToastProvider } from './context/ToastContext';
 import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './routes/ProtectedRoute';
@@ -12,7 +13,11 @@ import Catalog from './pages/Catalog';
 import ProductDetail from './pages/ProductDetail';
 import Services from './pages/Services';
 import Contact from './pages/Contact';
+import Checkout from './pages/Checkout';
+import Account from './pages/Account';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import NotFound from './pages/NotFound';
 
 import AdminDashboard from './pages/admin/Dashboard';
@@ -29,7 +34,8 @@ export default function App() {
   return (
     // basename sigue al `base` de vite.config.js (/AUTOCELLS/), así las rutas
     // del router funcionan igual en dev y en el servidor de la escuela.
-    // CartProvider no usa hooks del router, por eso puede envolverlo.
+    // CartProvider y ToastProvider no usan hooks del router, por eso pueden envolverlo.
+    <ToastProvider>
     <CartProvider>
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       {!splashDone && <SplashScreen onFinish={() => setSplashDone(true)} />}
@@ -40,7 +46,11 @@ export default function App() {
           <Route path="catalogo/:category/:productId" element={<ProductDetail />} />
           <Route path="servicios" element={<Services />} />
           <Route path="contacto" element={<Contact />} />
+          <Route path="comprar" element={<Checkout />} />
+          <Route path="cuenta" element={<Account />} />
           <Route path="login" element={<Login />} />
+          <Route path="registro" element={<Register />} />
+          <Route path="recuperar" element={<ForgotPassword />} />
           <Route path="*" element={<NotFound />} />
         </Route>
 
@@ -58,5 +68,6 @@ export default function App() {
       </Routes>
     </BrowserRouter>
     </CartProvider>
+    </ToastProvider>
   );
 }

@@ -1,52 +1,35 @@
-export const orderStatuses = ['pendiente', 'entregado', 'cancelado'];
+// Cliente del API de pedidos (server/index.js + SQLite). El folio se genera
+// en el servidor (allí sí hay un punto central que evita colisiones) y los
+// pedidos demo viven como seeds de la base de datos.
+import { apiUrl } from '../lib/api';
 
-export const orders = [
-  {
-    id: 'PED-1042',
-    customer: 'Ana Torres',
-    products: 'iPhone 13 128GB',
-    total: 11999,
-    status: 'pendiente',
-    date: '2026-07-06',
-  },
-  {
-    id: 'PED-1041',
-    customer: 'Luis Medina',
-    products: 'Funda uso rudo Spigen, Mica de vidrio templado',
-    total: 728,
-    status: 'entregado',
-    date: '2026-07-05',
-  },
-  {
-    id: 'PED-1040',
-    customer: 'Karla Ruiz',
-    products: 'Cargador 20W Anker',
-    total: 349,
-    status: 'entregado',
-    date: '2026-07-04',
-  },
-  {
-    id: 'PED-1039',
-    customer: 'Jorge Salcido',
-    products: 'iPhone 15 128GB',
-    total: 18999,
-    status: 'pendiente',
-    date: '2026-07-04',
-  },
-  {
-    id: 'PED-1038',
-    customer: 'Mariana López',
-    products: 'iPhone 12 64GB',
-    total: 8999,
-    status: 'cancelado',
-    date: '2026-07-03',
-  },
-  {
-    id: 'PED-1037',
-    customer: 'Diego Félix',
-    products: 'Cable Lightning Anker 1m, Cable USB-C UGREEN 1m',
-    total: 528,
-    status: 'entregado',
-    date: '2026-07-02',
-  },
-];
+// 'entregado-vendido' es el estado final: el cliente pasó a la tienda y pagó
+// en efectivo (único método de pago disponible).
+export const orderStatuses = ['pendiente', 'entregado-vendido', 'cancelado'];
+
+export async function getWebOrders(email) {
+  const query = email ? `?email=${encodeURIComponent(email)}` : '';
+  const response = await fetch(apiUrl(`pedidos${query}`));
+  if (!response.ok) throw new Error('Error al consultar los pedidos');
+  return response.json();
+}
+
+export async function addWebOrder(order) {
+  const response = await fetch(apiUrl('pedidos'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(order),
+  });
+  if (!response.ok) throw new Error('No se pudo registrar el pedido');
+  return response.json();
+}
+
+export async function updateWebOrderStatus(id, status) {
+  const response = await fetch(apiUrl(`pedidos/${encodeURIComponent(id)}/estado`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) throw new Error('No se pudo actualizar el pedido');
+  return true;
+}

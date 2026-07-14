@@ -1,6 +1,19 @@
-export const categories = ['Todos', 'iPhones', 'Fundas', 'Cargadores', 'Accesorios'];
+import { useSyncExternalStore } from 'react';
+import { getAdminProducts } from './adminProducts';
 
-export const brands = ['Todas', 'Apple', 'Spigen', 'Anker', 'UGREEN', 'Genérico'];
+// La taxonomía (categorías y atributos por categoría) refleja el formulario
+// de "Agregar producto" del admin (src/pages/admin/ProductForm.jsx): Celulares
+// llevan marca/almacenamiento/color, Fundas modelos compatibles, Cargadores
+// entrada, Protectores tipo y privacidad. Los filtros del catálogo dependen
+// de estos campos — si se agrega un atributo nuevo aquí, agregarlo también allá.
+export const categories = [
+  'Todos',
+  'Celulares',
+  'Fundas',
+  'Cargadores',
+  'Accesorios',
+  'Protector de pantalla',
+];
 
 export const priceRanges = [
   { label: 'Todos', min: 0, max: Infinity },
@@ -10,147 +23,95 @@ export const priceRanges = [
   { label: 'Más de $10,000', min: 10000, max: Infinity },
 ];
 
-// Todas las categorías del catálogo usan su nombre en minúsculas como slug de ruta (/catalogo/:category/:productId).
+// Slug de ruta (/catalogo/:category/:productId): minúsculas y espacios → guiones
+// para que "Protector de pantalla" no genere %20 en la URL.
 export function categorySlug(category) {
-  return category.toLowerCase();
+  return category.toLowerCase().replace(/\s+/g, '-');
 }
 
-export const products = [
-  {
-    id: 'iphone-15-128gb',
-    name: 'iPhone 15 128GB',
-    category: 'iPhones',
-    brand: 'Apple',
-    price: 18999,
-    status: 'nuevo',
-    stock: 'disponible',
-    description: 'iPhone 15 con chip A16 Bionic, cámara dual de 48MP y conector USB-C. Equipo nuevo y sellado, con garantía.',
-    storage: ['128GB', '256GB', '512GB'],
-    colors: ['Negro', 'Blanco', 'Azul'],
-  },
-  {
-    id: 'iphone-14-128gb',
-    name: 'iPhone 14 128GB',
-    category: 'iPhones',
-    brand: 'Apple',
-    price: 15499,
-    status: 'nuevo',
-    stock: 'disponible',
-    description: 'iPhone 14 con chip A15 Bionic y sistema de cámaras dual mejorado. Equipo nuevo y sellado, con garantía.',
-    storage: ['128GB', '256GB'],
-    colors: ['Negro', 'Blanco', 'Azul'],
-  },
-  {
-    id: 'iphone-13-128gb',
-    name: 'iPhone 13 128GB',
-    category: 'iPhones',
-    brand: 'Apple',
-    price: 11999,
-    status: 'seminuevo',
-    stock: 'disponible',
-    description: 'iPhone 13 seminuevo en excelente estado, batería verificada al 85%+ y cuerpo sin rayones visibles.',
-    storage: ['128GB', '256GB'],
-    colors: ['Negro', 'Blanco', 'Rojo'],
-  },
-  {
-    id: 'iphone-12-64gb',
-    name: 'iPhone 12 64GB',
-    category: 'iPhones',
-    brand: 'Apple',
-    price: 8999,
-    status: 'seminuevo',
-    stock: 'agotado',
-    description: 'iPhone 12 seminuevo, funcional al 100%, incluye cable de carga. Próximo lote disponible pronto.',
-    storage: ['64GB', '128GB'],
-    colors: ['Negro', 'Blanco'],
-  },
-  {
-    id: 'iphone-se-64gb',
-    name: 'iPhone SE 64GB',
-    category: 'iPhones',
-    brand: 'Apple',
-    price: 6499,
-    status: 'seminuevo',
-    stock: 'disponible',
-    description: 'iPhone SE compacto y potente, ideal como primer equipo. Batería verificada, cuerpo en muy buen estado.',
-    storage: ['64GB', '128GB'],
-    colors: ['Negro', 'Blanco', 'Rojo'],
-  },
-  {
-    id: 'funda-silicon-iphone-13',
-    name: 'Funda de silicón iPhone 13',
-    category: 'Fundas',
-    brand: 'Apple',
-    price: 449,
-    status: 'nuevo',
-    stock: 'disponible',
-    description: 'Funda de silicón suave al tacto con interior de microfibra, ajuste perfecto para iPhone 13.',
-    colors: ['Negro', 'Blanco', 'Azul', 'Rojo', 'Verde'],
-  },
-  {
-    id: 'funda-uso-rudo-spigen',
-    name: 'Funda uso rudo Spigen',
-    category: 'Fundas',
-    brand: 'Spigen',
-    price: 599,
-    status: 'nuevo',
-    stock: 'disponible',
-    description: 'Funda de uso rudo con esquinas reforzadas, protección contra caídas de hasta 3 metros.',
-    colors: ['Negro'],
-  },
-  {
-    id: 'cargador-20w-anker',
-    name: 'Cargador 20W Anker',
-    category: 'Cargadores',
-    brand: 'Anker',
-    price: 349,
-    status: 'nuevo',
-    stock: 'disponible',
-    description: 'Cargador de pared USB-C de 20W con carga rápida, compatible con toda la línea iPhone.',
-    colors: ['Blanco'],
-  },
-  {
-    id: 'cargador-inalambrico-ugreen',
-    name: 'Cargador inalámbrico UGREEN',
-    category: 'Cargadores',
-    brand: 'UGREEN',
-    price: 599,
-    status: 'nuevo',
-    stock: 'agotado',
-    description: 'Base de carga inalámbrica 15W compatible con MagSafe. Próximo lote disponible pronto.',
-    colors: ['Negro', 'Blanco'],
-  },
-  {
-    id: 'mica-vidrio-templado',
-    name: 'Mica de vidrio templado',
-    category: 'Accesorios',
-    brand: 'Genérico',
-    price: 129,
-    status: 'nuevo',
-    stock: 'disponible',
-    description: 'Mica de vidrio templado 9H, instalación incluida sin burbujas.',
-    colors: ['Transparente'],
-  },
-  {
-    id: 'cable-lightning-anker',
-    name: 'Cable Lightning Anker 1m',
-    category: 'Accesorios',
-    brand: 'Anker',
-    price: 279,
-    status: 'nuevo',
-    stock: 'disponible',
-    description: 'Cable Lightning trenzado de 1 metro, certificado MFi para carga y transferencia de datos.',
-    colors: ['Negro', 'Blanco'],
-  },
-  {
-    id: 'cable-usbc-ugreen',
-    name: 'Cable USB-C UGREEN 1m',
-    category: 'Accesorios',
-    brand: 'UGREEN',
-    price: 249,
-    status: 'nuevo',
-    stock: 'disponible',
-    description: 'Cable USB-C a USB-C de 1 metro con carga rápida de 60W.',
-    colors: ['Negro', 'Blanco'],
-  },
-];
+// Las imágenes viven en public/images/products/<id>.svg. Se resuelven con
+// BASE_URL para que funcionen igual en dev (/) y en producción bajo /AUTOCELLS/
+// — mismo gotcha que el basename del router (ver CLAUDE.md).
+function productImage(file) {
+  return `${import.meta.env.BASE_URL}images/products/${file}.svg`;
+}
+
+// Catálogo estático vacío a propósito: los productos capturados a mano van
+// aquí; los del admin (SQLite) se combinan abajo en el store del catálogo.
+// Forma de cada producto: { id, name, category, brand, price,
+// status: 'nuevo' | 'seminuevo', stock: 'disponible' | 'agotado', description,
+// colors, más los atributos contextuales de su categoría (storage,
+// compatibleModels, chargerInput, screenProtectorType, privacy). No definir
+// image/images a mano: se asignan abajo a partir del id.
+export const products = [];
+
+// El nombre de archivo es el id del producto, así que la asignación es
+// automática; los celulares suman una vista frontal para la galería del
+// detalle. `image` (portada) es siempre `images[0]`.
+for (const product of products) {
+  product.images =
+    product.category === 'Celulares'
+      ? [productImage(product.id), productImage(`${product.id}-front`)]
+      : [productImage(product.id)];
+  product.image = product.images[0];
+}
+
+// --- Catálogo combinado (estáticos + productos capturados en el admin) ---
+
+// El admin captura una sola variante (storage/color como string) y stock
+// numérico; el catálogo público modela variantes como arreglos y el stock como
+// 'disponible' | 'agotado', así que se traducen al leer del API. La foto ya
+// viene como data URL (o null → los consumidores caen al ícono de categoría).
+function normalizeAdminProduct(product) {
+  return {
+    ...product,
+    storage: product.storage ? [product.storage] : undefined,
+    colors: product.color ? [product.color] : undefined,
+    compatibleModels: product.customCompatibleModel
+      ? [...(product.compatibleModels ?? []), product.customCompatibleModel]
+      : product.compatibleModels,
+    stock: product.stock > 0 ? 'disponible' : 'agotado',
+  };
+}
+
+// Store mínimo con useSyncExternalStore en vez de un Context: los consumidores
+// (Catalog, ProductDetail, Home, CartContext, Breadcrumb) están regados por
+// todo el árbol y el catálogo no necesita provider. `loaded` distingue "el API
+// aún no responde" de "el producto no existe" (lo usa ProductDetail).
+let snapshot = { products, loaded: false };
+let inflight = null;
+const listeners = new Set();
+
+function getSnapshot() {
+  return snapshot;
+}
+
+// Se refresca en cada suscripción (= montaje de página) para que un producto
+// recién agregado en el admin aparezca al navegar al catálogo sin recargar.
+function refreshCatalog() {
+  inflight ??= getAdminProducts()
+    .then((adminProducts) => {
+      snapshot = {
+        products: [...adminProducts.map(normalizeAdminProduct), ...products],
+        loaded: true,
+      };
+    })
+    .catch(() => {
+      // Con el API caído, el catálogo estático sigue disponible.
+      snapshot = { ...snapshot, loaded: true };
+    })
+    .finally(() => {
+      inflight = null;
+      for (const listener of listeners) listener();
+    });
+}
+
+function subscribe(listener) {
+  listeners.add(listener);
+  refreshCatalog();
+  return () => listeners.delete(listener);
+}
+
+export function useCatalog() {
+  return useSyncExternalStore(subscribe, getSnapshot);
+}

@@ -1,15 +1,15 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Smartphone, MessageCircle, Unlock, ShieldCheck, Award, Truck } from 'lucide-react';
-import { products, categories } from '../data/products';
+import { Smartphone, Unlock, ShieldCheck, Award, Truck } from 'lucide-react';
+import { categories, useCatalog } from '../data/products';
 import ProductCard, { categoryIcons } from '../components/ProductCard';
-import { whatsappLink } from '../data/store';
+import { STORE_FACEBOOK_URL } from '../data/store';
+import { FacebookIcon } from '../components/SocialIcons';
 
 const categoryCards = categories.filter((category) => category !== 'Todos');
 
+// Actualizar estos ids cuando se capturen los productos reales en data/products.js.
 const featuredProductIds = ['iphone-15-128gb', 'iphone-14-128gb', 'funda-silicon-iphone-13', 'cargador-20w-anker'];
-const featuredProducts = featuredProductIds
-  .map((id) => products.find((product) => product.id === id))
-  .filter(Boolean);
 
 const trustPoints = [
   { icon: ShieldCheck, title: 'Compra segura', description: 'Equipos revisados antes de entregarse.' },
@@ -18,6 +18,26 @@ const trustPoints = [
 ];
 
 export default function Home() {
+  const { products } = useCatalog();
+
+  // El producto anclado desde el admin (estrella en Admin → Productos) siempre
+  // va primero. El resto rellena con los ids capturados a mano o, si no existen
+  // (el catálogo estático está vacío), con los más recientes del admin.
+  const featuredProducts = useMemo(() => {
+    const pinned = products.find((product) => product.featured);
+    const handpicked = featuredProductIds
+      .map((id) => products.find((product) => product.id === id))
+      .filter(Boolean);
+    const rest = (handpicked.length > 0 ? handpicked : products).filter(
+      (product) => product !== pinned,
+    );
+    return [...(pinned ? [pinned] : []), ...rest].slice(0, 4);
+  }, [products]);
+
+  // El brief pide "hero con foto de iPhone": se usa la vista frontal del iPhone 15
+  // (images[1]); si el producto desapareciera del catálogo, cae al ícono de siempre.
+  const heroImage = products.find((product) => product.id === 'iphone-15-128gb')?.images?.[1];
+
   return (
     <div>
       {/* Hero */}
@@ -38,19 +58,23 @@ export default function Home() {
                 Ver catálogo
               </Link>
               <a
-                href={whatsappLink('Hola, quiero información sobre sus equipos.')}
+                href={STORE_FACEBOOK_URL}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2 rounded-card border border-secondary/20 px-6 py-3.5 text-base font-semibold text-secondary transition-colors hover:border-primary-dark hover:text-primary-dark"
               >
-                <MessageCircle className="h-5 w-5" />
-                Preguntar por WhatsApp
+                <FacebookIcon className="h-5 w-5" />
+                Contáctanos por Facebook
               </a>
             </div>
           </div>
 
           <div className="animate-hero-in-image flex aspect-square items-center justify-center rounded-card bg-bg-alt [animation-delay:90ms]">
-            <Smartphone className="h-32 w-32 text-primary-dark" strokeWidth={1.25} />
+            {heroImage ? (
+              <img src={heroImage} alt="iPhone 15 en AUTOCELLS" className="h-full w-full object-contain p-12" />
+            ) : (
+              <Smartphone className="h-32 w-32 text-primary-dark" strokeWidth={1.25} />
+            )}
           </div>
         </div>
       </section>
@@ -59,7 +83,7 @@ export default function Home() {
       <section className="bg-bg-alt">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-secondary">Categorías</h2>
-          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
             {categoryCards.map((category) => {
               const Icon = categoryIcons[category];
               return (
@@ -95,22 +119,24 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Productos destacados */}
-      <section className="bg-bg-alt">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-secondary">Productos destacados</h2>
-            <Link to="/catalogo" className="text-sm font-semibold text-primary-dark hover:underline">
-              Ver catálogo completo
-            </Link>
+      {/* Productos destacados — se oculta mientras el catálogo esté vacío */}
+      {featuredProducts.length > 0 && (
+        <section className="bg-bg-alt">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-secondary">Productos destacados</h2>
+              <Link to="/catalogo" className="text-sm font-semibold text-primary-dark hover:underline">
+                Ver catálogo completo
+              </Link>
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
+              {featuredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Banner de confianza */}
       <section className="bg-white">
