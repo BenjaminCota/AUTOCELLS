@@ -74,10 +74,13 @@ function groupSlots(slots) {
   ].filter((group) => group.items.length > 0);
 }
 
-function BookingModal({ services, onClose }) {
+function BookingModal({ services, initialServiceId, onClose }) {
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
-  const [serviceId, setServiceId] = useState(services[0]?.id ?? '');
+  // El servicio arranca en el que se pidió desde su bloque (o el primero); el
+  // usuario puede cambiarlo con el selector. El calendario es el mismo para
+  // todos los servicios: un horario ocupado por cualquiera bloquea a los demás.
+  const [serviceId, setServiceId] = useState(initialServiceId ?? services[0]?.id ?? '');
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [displayedMonth, setDisplayedMonth] = useState(() => {
     const today = new Date();
@@ -450,8 +453,18 @@ function BookingModal({ services, onClose }) {
 export default function Services() {
   const toast = useToast();
   const [services, setServices] = useState([]);
+  // El primero (R-SIM, el servicio principal) protagoniza el hero; el resto se
+  // listan como bloques debajo.
   const primaryService = services[0];
+  const otherServices = services.slice(1);
   const [bookingOpen, setBookingOpen] = useState(false);
+  // Servicio a preseleccionar al abrir el modal (null = el primero por default).
+  const [bookingServiceId, setBookingServiceId] = useState(null);
+
+  function openBooking(serviceId = null) {
+    setBookingServiceId(serviceId);
+    setBookingOpen(true);
+  }
 
   // Los servicios se traen de la base (antes vivían en memoria en el front).
   useEffect(() => {
@@ -483,7 +496,7 @@ export default function Services() {
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
-                onClick={() => setBookingOpen(true)}
+                onClick={() => openBooking()}
                 disabled={services.length === 0}
                 className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3.5 text-base font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
               >
@@ -556,6 +569,44 @@ export default function Services() {
         </div>
       </section>
 
+      {/* Otros servicios: los que el admin agrega además del R-SIM. Cada uno
+          muestra su descripción (antes invisible para el cliente) y agenda con
+          el MISMO calendario compartido. */}
+      {otherServices.length > 0 && (
+        <section className="bg-white">
+          <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
+            <h2 className="text-center text-2xl font-bold text-secondary">Otros servicios</h2>
+            <p className="mt-2 text-center text-muted">
+              Además de la liberación por R-SIM, en AUTOCELLS también te ofrecemos:
+            </p>
+            <div className="mt-10 grid gap-6 sm:grid-cols-2">
+              {otherServices.map((svc) => (
+                <div
+                  key={svc.id}
+                  className="flex flex-col rounded-card border border-secondary/10 bg-white p-6 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-secondary">{svc.name}</h3>
+                    <span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary-dark">
+                      ${svc.price.toLocaleString('es-MX')} MXN
+                    </span>
+                  </div>
+                  {svc.description && <p className="mt-3 text-sm text-muted">{svc.description}</p>}
+                  <button
+                    type="button"
+                    onClick={() => openBooking(svc.id)}
+                    className="mt-6 flex items-center justify-center gap-2 self-start rounded-card bg-primary-dark px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+                  >
+                    <CalendarClock className="h-4 w-4" />
+                    Agendar cita
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* CTA final */}
       <section className="bg-secondary">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-8">
@@ -570,7 +621,13 @@ export default function Services() {
         </div>
       </section>
 
-      {bookingOpen && <BookingModal services={services} onClose={() => setBookingOpen(false)} />}
+      {bookingOpen && (
+        <BookingModal
+          services={services}
+          initialServiceId={bookingServiceId}
+          onClose={() => setBookingOpen(false)}
+        />
+      )}
     </div>
   );
 }
