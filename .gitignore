@@ -29,6 +29,7 @@ dist-ssr
 .impeccable
 skills-lock.json
 CLAUDE.md
+prompt-codeautocells.md
 
 # Base de datos local (cada entorno genera la suya), incluidos los
 # archivos -shm/-wal del modo WAL
