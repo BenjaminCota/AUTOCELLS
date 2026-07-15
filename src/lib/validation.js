@@ -93,6 +93,11 @@ export function validatePassword(value) {
   return null;
 }
 
+// Texto tecleado al azar tipo spam: el mismo carácter repetido 10+ veces
+// seguidas ("Templadooooo…", "fundaaaa…", "!!!!!!!!!!"). Ningún nombre o
+// descripción real lo hace, así que se rechaza aunque respete la longitud.
+const REPEATED_CHAR_PATTERN = /(.)\1{9,}/;
+
 // Equipo a liberar en las citas ("iPhone 13 128GB").
 export function validateDevice(value) {
   const device = String(value ?? '').trim();
@@ -113,13 +118,21 @@ export function validateProductName(value) {
   if (name.length > LIMITS.productName.max) {
     return `El nombre no puede pasar de ${LIMITS.productName.max} caracteres.`;
   }
+  if (REPEATED_CHAR_PATTERN.test(name)) {
+    return 'Ese nombre no parece válido. Revisa que esté bien escrito.';
+  }
   return null;
 }
 
-// Descripciones y textos libres opcionales: solo se acota la longitud.
+// Descripciones y textos libres opcionales: se acota la longitud y se rechaza
+// el relleno de caracteres repetidos (ver REPEATED_CHAR_PATTERN).
 export function validateDescription(value, max = LIMITS.description.max) {
-  if (String(value ?? '').trim().length > max) {
+  const text = String(value ?? '').trim();
+  if (text.length > max) {
     return `La descripción no puede pasar de ${max} caracteres.`;
+  }
+  if (REPEATED_CHAR_PATTERN.test(text)) {
+    return 'La descripción no parece válida: evita repetir el mismo carácter.';
   }
   return null;
 }

@@ -658,16 +658,25 @@ export default function ProductForm() {
             </>
           )}
 
-          <FormField
-            label="Descripción"
-            id="description"
-            name="description"
-            textarea
-            maxLength={LIMITS.description.max}
-            error={fieldErrors.description}
-            value={form.description}
-            onChange={handleChange}
-          />
+          <div>
+            <FormField
+              label="Descripción"
+              id="description"
+              name="description"
+              textarea
+              maxLength={LIMITS.description.max}
+              error={fieldErrors.description}
+              value={form.description}
+              onChange={handleChange}
+            />
+            <p
+              className={`mt-1 text-right text-xs ${
+                form.description.length >= LIMITS.description.max ? 'text-danger-dark' : 'text-muted'
+              }`}
+            >
+              {form.description.length}/{LIMITS.description.max} caracteres
+            </p>
+          </div>
 
           <div>
             <label htmlFor="photos" className="mb-1.5 block text-sm font-medium text-secondary">
