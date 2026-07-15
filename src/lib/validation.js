@@ -12,6 +12,9 @@ export const LIMITS = {
   device: { min: 3, max: 60 },
   productName: { min: 3, max: 80 },
   description: { max: 600 },
+  // Las descripciones de servicio se muestran en una tarjeta de la página
+  // pública, así que se acotan más corto que las de producto.
+  serviceDescription: { max: 300 },
   price: { max: 1_000_000 },
   stock: { max: 9_999 },
 };

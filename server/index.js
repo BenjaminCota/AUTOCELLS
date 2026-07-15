@@ -862,7 +862,7 @@ function invalidService(body, { partial = false } = {}) {
   return (
     (partial && body.name === undefined ? null : validateProductName(body.name)) ??
     (partial && body.price === undefined ? null : validatePrice(body.price, 'El costo')) ??
-    (body.description !== undefined ? validateDescription(body.description) : null)
+    (body.description !== undefined ? validateDescription(body.description, LIMITS.serviceDescription.max) : null)
   );
 }
 

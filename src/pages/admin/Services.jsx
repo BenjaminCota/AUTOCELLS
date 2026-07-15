@@ -83,7 +83,7 @@ export default function Services() {
     else if (name.length > LIMITS.productName.max) errors.name = `El nombre no puede pasar de ${LIMITS.productName.max} caracteres.`;
     const priceError = validatePrice(form.price, 'El costo');
     if (priceError) errors.price = priceError;
-    const descriptionError = validateDescription(form.description);
+    const descriptionError = validateDescription(form.description, LIMITS.serviceDescription.max);
     if (descriptionError) errors.description = descriptionError;
 
     if (Object.keys(errors).length > 0) {
@@ -218,16 +218,27 @@ export default function Services() {
               value={form.price}
               onChange={handleChange}
             />
-            <FormField
-              label="Descripción"
-              id="description"
-              name="description"
-              textarea
-              maxLength={LIMITS.description.max}
-              error={fieldErrors.description}
-              value={form.description}
-              onChange={handleChange}
-            />
+            <div>
+              <FormField
+                label="Descripción"
+                id="description"
+                name="description"
+                textarea
+                maxLength={LIMITS.serviceDescription.max}
+                error={fieldErrors.description}
+                value={form.description}
+                onChange={handleChange}
+              />
+              {/* Contador visible: la descripción aparece en la tarjeta pública
+                  del servicio, así que se limita para que no sea un muro de texto. */}
+              <p
+                className={`mt-1 text-right text-xs ${
+                  form.description.length >= LIMITS.serviceDescription.max ? 'text-danger-dark' : 'text-muted'
+                }`}
+              >
+                {form.description.length}/{LIMITS.serviceDescription.max} caracteres
+              </p>
+            </div>
 
             <div className="mt-2 flex justify-end gap-3">
               <button
