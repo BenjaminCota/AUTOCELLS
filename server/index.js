@@ -844,6 +844,71 @@ api.post('/citas', (req, res) => {
   res.status(201).json(publicAppointment(appointment));
 });
 
+// ---------- Servicios ----------
+
+function publicService(row) {
+  return { id: row.id, name: row.name, price: row.price, description: row.description };
+}
+
+// Público: la página de Servicios muestra el catálogo y arma el modal de cita.
+api.get('/servicios', (req, res) => {
+  const rows = db.prepare('SELECT * FROM services ORDER BY created_at').all();
+  res.json(rows.map(publicService));
+});
+
+// Validación compartida con los productos: nombre (3–80), precio (>0,
+// ≤1,000,000) y descripción opcional. El frontend pinta el mismo mensaje.
+function invalidService(body, { partial = false } = {}) {
+  return (
+    (partial && body.name === undefined ? null : validateProductName(body.name)) ??
+    (partial && body.price === undefined ? null : validatePrice(body.price, 'El costo')) ??
+    (body.description !== undefined ? validateDescription(body.description) : null)
+  );
+}
+
+api.post('/servicios', requireAdmin, (req, res) => {
+  const body = req.body ?? {};
+  const invalid = invalidService(body);
+  if (invalid) return res.status(400).json({ error: invalid });
+
+  const row = {
+    id: `${slugify(body.name)}-${Date.now().toString(36)}`,
+    name: body.name.trim(),
+    price: Number(body.price),
+    description: body.description?.trim() ?? '',
+    created_at: new Date().toISOString(),
+  };
+  db.prepare('INSERT INTO services (id, name, price, description, created_at) VALUES (?, ?, ?, ?, ?)').run(
+    row.id, row.name, row.price, row.description, row.created_at,
+  );
+  res.status(201).json(publicService(row));
+});
+
+api.put('/servicios/:id', requireAdmin, (req, res) => {
+  const row = db.prepare('SELECT * FROM services WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Servicio no encontrado' });
+
+  const body = req.body ?? {};
+  const invalid = invalidService(body, { partial: true });
+  if (invalid) return res.status(400).json({ error: invalid });
+
+  const updated = {
+    name: body.name?.trim() || row.name,
+    price: body.price !== undefined ? Number(body.price) : row.price,
+    description: body.description !== undefined ? body.description.trim() : row.description,
+  };
+  db.prepare('UPDATE services SET name = ?, price = ?, description = ? WHERE id = ?').run(
+    updated.name, updated.price, updated.description, req.params.id,
+  );
+  res.json(publicService({ ...row, ...updated }));
+});
+
+api.delete('/servicios/:id', requireAdmin, (req, res) => {
+  const result = db.prepare('DELETE FROM services WHERE id = ?').run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Servicio no encontrado' });
+  res.json({ ok: true });
+});
+
 // El mismo router en ambos prefijos: /api en dev (proxy de Vite) y
 // /AUTOCELLS/api cuando la app se sirve bajo el subpath de producción.
 app.use('/api', api);

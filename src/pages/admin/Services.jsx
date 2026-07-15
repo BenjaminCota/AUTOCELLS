@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Save } from 'lucide-react';
 import AdminTable from '../../components/AdminTable';
 import ConfirmDialog from '../../components/ConfirmDialog';
@@ -16,7 +16,9 @@ const emptyForm = {
 
 export default function Services() {
   const toast = useToast();
-  const [services, setServices] = useState(() => getAdminServices());
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -24,6 +26,25 @@ export default function Services() {
   const [formError, setFormError] = useState('');
 
   const isEditing = Boolean(editingId);
+
+  // Los servicios se traen de la base al montar el panel.
+  useEffect(() => {
+    let active = true;
+    getAdminServices()
+      .then((list) => {
+        if (active) setServices(list);
+      })
+      .catch(() => {
+        if (active) toast.error('No se pudieron cargar los servicios. Recarga la página.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function resetForm() {
     setForm(emptyForm);
@@ -50,8 +71,9 @@ export default function Services() {
     setFormError('');
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    if (saving) return;
 
     // Mismos límites que los productos (lib/validation.js), con copy de servicio.
     const errors = {};
@@ -76,30 +98,42 @@ export default function Services() {
       description: form.description.trim(),
     };
 
-    if (isEditing) {
-      updateAdminService(editingId, payload);
-      setServices(getAdminServices());
-      toast.success(`Los cambios de ${payload.name} se guardaron.`);
-    } else {
-      const created = addAdminService(payload);
-      setServices((prev) => [created, ...prev]);
-      toast.success(`${created.name} se agregó a los servicios.`);
+    setSaving(true);
+    try {
+      if (isEditing) {
+        const updated = await updateAdminService(editingId, payload);
+        setServices((prev) => prev.map((service) => (service.id === editingId ? updated : service)));
+        toast.success(`Los cambios de ${updated.name} se guardaron.`);
+      } else {
+        const created = await addAdminService(payload);
+        setServices((prev) => [created, ...prev]);
+        toast.success(`${created.name} se agregó a los servicios.`);
+      }
+      resetForm();
+    } catch {
+      setFormError('No se pudo guardar el servicio. Inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
     }
-
-    resetForm();
   }
 
-  function confirmDelete() {
-    deleteAdminService(pendingDelete.id);
-    setServices((prev) => prev.filter((service) => service.id !== pendingDelete.id));
-    toast.success(`${pendingDelete.name} se eliminó de los servicios.`);
+  async function confirmDelete() {
+    const target = pendingDelete;
     setPendingDelete(null);
+    try {
+      await deleteAdminService(target.id);
+      setServices((prev) => prev.filter((service) => service.id !== target.id));
+      toast.success(`${target.name} se eliminó de los servicios.`);
+    } catch {
+      toast.error('No se pudo eliminar el servicio. Inténtalo de nuevo.');
+    }
   }
 
   const summary = useMemo(() => {
+    if (loading) return 'Cargando servicios…';
     if (!services.length) return 'Sin servicios registrados';
     return `${services.length} servicio${services.length === 1 ? '' : 's'} registrado${services.length === 1 ? '' : 's'}`;
-  }, [services.length]);
+  }, [loading, services.length]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -122,7 +156,10 @@ export default function Services() {
         <div className="rounded-card border border-secondary/10 bg-white p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-secondary">Servicios actuales</h2>
           <div className="mt-4">
-            <AdminTable headers={['Servicio', 'Costo', 'Acciones']} emptyMessage="No hay servicios registrados aún.">
+            <AdminTable
+              headers={['Servicio', 'Costo', 'Acciones']}
+              emptyMessage={loading ? 'Cargando servicios…' : 'No hay servicios registrados aún.'}
+            >
               {services.map((service) => (
                 <tr key={service.id}>
                   <td className="px-4 py-3">
@@ -202,10 +239,11 @@ export default function Services() {
               </button>
               <button
                 type="submit"
-                className="flex items-center gap-2 rounded-card bg-primary-dark px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+                disabled={saving}
+                className="flex items-center gap-2 rounded-card bg-primary-dark px-4 py-2 text-sm font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
               >
                 <Save className="h-4 w-4" />
-                {isEditing ? 'Guardar cambios' : 'Guardar servicio'}
+                {saving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Guardar servicio'}
               </button>
             </div>
           </form>

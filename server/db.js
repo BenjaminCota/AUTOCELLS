@@ -20,6 +20,14 @@ db.exec(`
   PRAGMA synchronous = NORMAL;
 `);
 
+// ¿Existe ya la tabla de servicios? Se consulta ANTES del CREATE de abajo para
+// sembrar el servicio principal SOLO la primera vez (el CREATE IF NOT EXISTS no
+// distingue "recién creada" de "ya estaba"). Así, si el admin borra todos los
+// servicios y reinicia, no reaparecen.
+const servicesTableExisted = db
+  .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'services'")
+  .get();
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     email      TEXT PRIMARY KEY,
@@ -60,6 +68,17 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS rate_events (
     bucket TEXT NOT NULL,
     at     TEXT NOT NULL
+  );
+
+  -- Servicios de la tienda (liberación por R-SIM, etc.). Antes vivían en
+  -- memoria en el frontend (se reseteaban al recargar); ahora persisten y el
+  -- admin los administra igual que los productos. El id lo genera el server.
+  CREATE TABLE IF NOT EXISTS services (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    price       REAL NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS orders (
@@ -186,6 +205,20 @@ export function todayKey() {
   return formatDateKey(new Date());
 }
 
-// Sin seeds: la base arranca vacía a propósito (los datos demo estorbaban para
-// probar con datos reales). Si un entorno nuevo necesita datos, se capturan
-// desde la propia app.
+// Sin seeds de datos demo: la base arranca vacía a propósito (los datos demo
+// estorbaban para probar con datos reales). Si un entorno nuevo necesita
+// datos, se capturan desde la propia app.
+//
+// EXCEPCIÓN: el servicio principal de la tienda (liberación por R-SIM) no es
+// dato demo, es el negocio en sí — la página pública de Servicios lo necesita.
+// Se siembra UNA sola vez, cuando la tabla `services` se crea por primera vez
+// (ver servicesTableExisted arriba); si el admin lo borra, no reaparece.
+if (!servicesTableExisted) {
+  db.prepare('INSERT INTO services (id, name, price, description, created_at) VALUES (?, ?, ?, ?, ?)').run(
+    'liberacion-rsim',
+    'Liberación de celulares por R-SIM',
+    300,
+    'Servicio principal de liberación para iPhone.',
+    new Date().toISOString(),
+  );
+}

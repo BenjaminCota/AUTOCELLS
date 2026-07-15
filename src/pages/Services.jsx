@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Unlock,
@@ -448,9 +448,26 @@ function BookingModal({ services, onClose }) {
 }
 
 export default function Services() {
-  const services = useMemo(() => getAdminServices(), []);
+  const toast = useToast();
+  const [services, setServices] = useState([]);
   const primaryService = services[0];
   const [bookingOpen, setBookingOpen] = useState(false);
+
+  // Los servicios se traen de la base (antes vivían en memoria en el front).
+  useEffect(() => {
+    let active = true;
+    getAdminServices()
+      .then((list) => {
+        if (active) setServices(list);
+      })
+      .catch(() => {
+        if (active) toast.error('No se pudieron cargar los servicios.');
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div>
@@ -467,10 +484,11 @@ export default function Services() {
               <button
                 type="button"
                 onClick={() => setBookingOpen(true)}
-                className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-primary-hover"
+                disabled={services.length === 0}
+                className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3.5 text-base font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
               >
                 <CalendarClock className="h-5 w-5" />
-                Agendar una cita
+                {services.length === 0 ? 'Cargando servicios…' : 'Agendar una cita'}
               </button>
               <Link
                 to="/contacto"
