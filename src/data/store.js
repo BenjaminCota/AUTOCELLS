@@ -11,7 +11,7 @@ export const STORE_HOURS_LINES = [
 export const STORE_HOURS = STORE_HOURS_LINES.join(' · ');
 export const STORE_INSTAGRAM_URL = 'https://www.instagram.com/autocellslopez';
 export const STORE_FACEBOOK_URL = 'https://www.facebook.com/profile.php?id=61583954035162';
-export const STORE_COORDS = { lat: 32.4508118, lng: -114.7723478 };
+export const STORE_COORDS = { lat: 32.4506778, lng: -114.7725824 };
 export const STORE_MAPS_EMBED_URL = `https://www.google.com/maps?q=${STORE_COORDS.lat},${STORE_COORDS.lng}&output=embed`;
 export const STORE_MAPS_LINK = `https://www.google.com/maps?q=${STORE_COORDS.lat},${STORE_COORDS.lng}`;
 
