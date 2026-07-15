@@ -54,6 +54,14 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  -- Contadores del rate limiting (server/rateLimit.js). En SQLite por lo
+  -- mismo que las sesiones: los workers del cluster deben compartir el
+  -- conteo. Los eventos caducan solos (barrido en cada escritura).
+  CREATE TABLE IF NOT EXISTS rate_events (
+    bucket TEXT NOT NULL,
+    at     TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS orders (
     id       TEXT PRIMARY KEY, -- folio AC-AAMMDD-XXXX (o PED-xxxx en los demo)
     customer TEXT NOT NULL,
@@ -130,6 +138,8 @@ for (const alter of [
 db.exec('CREATE INDEX IF NOT EXISTS idx_users_verify_token ON users (verify_token)');
 // Cerrar las sesiones de una cuenta (cambio de contraseña) busca por email.
 db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_email ON sessions (email)');
+// El rate limiting cuenta eventos por bucket dentro de una ventana de tiempo.
+db.exec('CREATE INDEX IF NOT EXISTS idx_rate_events ON rate_events (bucket, at)');
 
 // Índices para las consultas reales del API (mis pedidos por correo, citas por
 // día/cliente, catálogo ordenado): con pocos registros no se nota, pero evitan

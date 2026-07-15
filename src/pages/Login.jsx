@@ -97,8 +97,13 @@ export default function Login() {
         phone: result.user.phone,
         role: result.user.role ?? 'user',
       });
-    } catch {
-      toast.error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
+    } catch (requestError) {
+      // 429 = demasiados intentos fallidos (rate limiting del server).
+      if (requestError.status === 429) {
+        setError(requestError.message);
+      } else {
+        toast.error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
+      }
     } finally {
       setSubmitting(false);
     }

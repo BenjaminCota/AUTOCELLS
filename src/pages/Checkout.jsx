@@ -190,6 +190,8 @@ export default function Checkout() {
         // del server dice qué producto y cuántas piezas quedan.
         setFormError(requestError.message);
         toast.error('Hay productos sin inventario suficiente. Ajusta tu carrito.');
+      } else if (requestError.status === 429) {
+        setFormError(requestError.message);
       } else {
         toast.error('No se pudo registrar el pedido. Inténtalo de nuevo.');
       }
@@ -204,8 +206,11 @@ export default function Checkout() {
     try {
       await resendVerification(form.email.trim().toLowerCase());
       toast.info('Te enviamos el correo de verificación. Revisa tu bandeja de entrada.');
-    } catch {
-      toast.error('No se pudo enviar el correo. Inténtalo de nuevo.');
+    } catch (resendError) {
+      // 429 = límite de reenvíos: el mensaje del server pide esperar.
+      toast.error(
+        resendError.status === 429 ? resendError.message : 'No se pudo enviar el correo. Inténtalo de nuevo.',
+      );
     } finally {
       setResending(false);
     }

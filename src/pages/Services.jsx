@@ -191,6 +191,9 @@ function BookingModal({ services, onClose }) {
         toast.error('Ese horario acaba de ocuparse. Elige otro.');
         setTime('');
         setSlotsVersion((version) => version + 1);
+      } else if (error.status === 429) {
+        // Límite de citas por conexión (el mensaje del server explica).
+        toast.error(error.message);
       } else {
         toast.error('No se pudo agendar la cita. Inténtalo de nuevo.');
       }

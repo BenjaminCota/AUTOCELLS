@@ -62,8 +62,11 @@ export default function VerifyEmail() {
       const result = await resendVerification(account.email);
       setDevVerifyUrl(result.devVerifyUrl ?? null);
       toast.info(`Te reenviamos el correo de verificación a ${account.email}.`);
-    } catch {
-      toast.error('No se pudo reenviar el correo. Inténtalo de nuevo.');
+    } catch (resendError) {
+      // 429 = límite de reenvíos: el mensaje del server pide esperar.
+      toast.error(
+        resendError.status === 429 ? resendError.message : 'No se pudo reenviar el correo. Inténtalo de nuevo.',
+      );
     } finally {
       setResending(false);
     }

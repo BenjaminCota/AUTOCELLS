@@ -32,7 +32,8 @@ export async function getAppointments({ date } = {}) {
   return response.json();
 }
 
-// Lanza Error con status 409 adjunto si el horario ya está ocupado.
+// Lanza Error con status adjunto: 409 = horario ocupado, 429 = límite de
+// citas por conexión (el mensaje del server explica cada caso).
 export async function addAppointment(data) {
   const response = await fetch(apiUrl('citas'), {
     method: 'POST',
@@ -40,7 +41,8 @@ export async function addAppointment(data) {
     body: JSON.stringify(data),
   });
   if (!response.ok) {
-    const error = new Error('No se pudo agendar la cita');
+    const body = await response.json().catch(() => ({}));
+    const error = new Error(body.error ?? 'No se pudo agendar la cita');
     error.status = response.status;
     throw error;
   }

@@ -18,6 +18,9 @@ import {
   requireAdmin,
   requireSelfOrAdmin,
 } from './auth.js';
+// Límite de intentos en los endpoints sensibles (fallos de login, envíos de
+// correo, citas y pedidos). Contadores en SQLite: ver server/rateLimit.js.
+import { isLimited, record, clear, clientIp, LIMIT_MESSAGE } from './rateLimit.js';
 import { slugify } from '../src/lib/slugify.js';
 // Mismas reglas que validan los formularios: el backend nunca confía en que
 // el cliente ya validó (se puede llamar al API directo con datos basura).
@@ -119,6 +122,12 @@ api.get('/usuarios/:email', requireSelfOrAdmin, (req, res) => {
 
 api.post('/usuarios', async (req, res) => {
   const { name, email, phone, password } = req.body ?? {};
+  // Cada registro manda un correo de verificación: 5 por hora por IP cuidan
+  // la cuota del SMTP (el consumo se cobra abajo, cuando el registro procede).
+  const registerBucket = `registro:${clientIp(req)}`;
+  if (isLimited(registerBucket, 5, 60)) {
+    return res.status(429).json({ error: LIMIT_MESSAGE });
+  }
   // Los validadores regresan null cuando el dato es válido: el primer mensaje
   // no-nulo de la cadena ?? es el error que se responde.
   const invalid =
@@ -134,6 +143,7 @@ api.post('/usuarios', async (req, res) => {
   const exists = db.prepare('SELECT 1 FROM users WHERE email = ?').get(normalized);
   if (exists) return res.status(409).json({ error: 'Ese correo ya tiene una cuenta' });
 
+  record(registerBucket);
   const createdAt = new Date().toISOString();
   try {
     // La cuenta nace pendiente de verificar (verified = 0); el enlace del
@@ -200,6 +210,12 @@ api.post('/usuarios/reenviar-verificacion', async (req, res) => {
   if (invalid) return res.status(400).json({ error: invalid });
 
   const normalized = email.trim().toLowerCase();
+  // Mismos límites que la recuperación: cada reenvío es un correo real.
+  if (isLimited(`reenviar:${normalized}`, 3, 15) || isLimited(`reenviar-ip:${clientIp(req)}`, 10, 60)) {
+    return res.status(429).json({ error: 'Ya se reenvió el correo varias veces. Espera unos minutos y revisa tu bandeja.' });
+  }
+  record(`reenviar:${normalized}`);
+  record(`reenviar-ip:${clientIp(req)}`);
   const row = db.prepare('SELECT * FROM users WHERE email = ?').get(normalized);
   if (!row) return res.status(404).json({ error: 'No encontramos una cuenta con ese correo' });
   if (row.verified) return res.json({ ok: true, alreadyVerified: true });
@@ -210,9 +226,29 @@ api.post('/usuarios/reenviar-verificacion', async (req, res) => {
 
 api.post('/usuarios/validar', (req, res) => {
   const { email, password } = req.body ?? {};
-  const row = db.prepare('SELECT * FROM users WHERE email = ?').get((email ?? '').toLowerCase());
-  if (!row) return res.json({ ok: false, reason: 'email' });
-  if (!verifyPassword(password ?? '', row.password)) return res.json({ ok: false, reason: 'password' });
+  const normalized = String(email ?? '').toLowerCase();
+  // Solo cuentan los intentos FALLIDOS, y un login exitoso perdona el bucket
+  // del correo: el dueño legítimo no queda castigado por sus propios typos,
+  // pero la fuerza bruta (por cuenta o rotando cuentas desde una IP) se topa.
+  const emailBucket = `login:${normalized}`;
+  const ipBucket = `login-ip:${clientIp(req)}`;
+  if (isLimited(emailBucket, 8, 15) || isLimited(ipBucket, 30, 15)) {
+    return res.status(429).json({ error: LIMIT_MESSAGE });
+  }
+  const failed = () => {
+    record(emailBucket);
+    record(ipBucket);
+  };
+  const row = db.prepare('SELECT * FROM users WHERE email = ?').get(normalized);
+  if (!row) {
+    failed();
+    return res.json({ ok: false, reason: 'email' });
+  }
+  if (!verifyPassword(password ?? '', row.password)) {
+    failed();
+    return res.json({ ok: false, reason: 'password' });
+  }
+  clear(emailBucket);
   // Cuenta de antes del hash: este es el único momento en que tenemos la
   // contraseña en claro y comprobada, así que se migra aquí mismo.
   if (!isHashed(row.password)) {
@@ -291,6 +327,13 @@ api.post('/usuarios/recuperar', async (req, res) => {
   const invalid = validateEmail(email);
   if (invalid) return res.status(400).json({ error: invalid });
   const normalized = email.trim().toLowerCase();
+  // Cada solicitud manda un correo: límites cortos por cuenta y por IP (esto
+  // también frena a quien sondea qué correos tienen cuenta).
+  if (isLimited(`recuperar:${normalized}`, 3, 15) || isLimited(`recuperar-ip:${clientIp(req)}`, 10, 60)) {
+    return res.status(429).json({ error: 'Ya se pidieron varios códigos. Espera unos minutos y revisa tu correo.' });
+  }
+  record(`recuperar:${normalized}`);
+  record(`recuperar-ip:${clientIp(req)}`);
   const row = db.prepare('SELECT * FROM users WHERE email = ?').get(normalized);
   if (!row) return res.status(404).json({ error: 'No encontramos una cuenta con ese correo' });
 
@@ -530,6 +573,13 @@ api.post('/pedidos', requireAuth, (req, res) => {
     });
   }
 
+  // 10 pedidos por hora por cuenta: nadie compra más seguido que eso de
+  // verdad, y evita que una cuenta llene la base (y aparte inventario) a lo loco.
+  const orderBucket = `pedidos:${req.user.email}`;
+  if (isLimited(orderBucket, 10, 60)) {
+    return res.status(429).json({ error: LIMIT_MESSAGE });
+  }
+
   const lines = Array.isArray(items) ? items : [];
   for (const line of lines) {
     if (!Number.isInteger(line?.qty) || line.qty < 1 || line.qty > 999) {
@@ -599,6 +649,8 @@ api.post('/pedidos', requireAuth, (req, res) => {
     db.exec('ROLLBACK');
     throw error;
   }
+  // Solo los pedidos que sí se crearon consumen el límite.
+  record(orderBucket);
   res.status(201).json(publicOrder(order));
 });
 
@@ -723,6 +775,15 @@ api.post('/citas', (req, res) => {
   if (!serviceName || !date || !time) {
     return res.status(400).json({ error: 'Faltan datos de la cita' });
   }
+  // Sin límite, una sola conexión podría llenar el calendario completo y
+  // dejar sin horarios a los clientes reales.
+  const appointmentBucket = `citas:${clientIp(req)}`;
+  if (isLimited(appointmentBucket, 5, 24 * 60)) {
+    return res.status(429).json({
+      error: 'Ya se agendaron varias citas desde esta conexión hoy. Llámanos para agendar otra.',
+    });
+  }
+
   const invalid =
     validatePersonName(customerName) ??
     validatePhone(customerPhone) ??
@@ -777,6 +838,9 @@ api.post('/citas', (req, res) => {
     }
     throw error;
   }
+  // Solo las citas que sí se crearon consumen el límite (un 409 por horario
+  // ocupado no debe castigar al cliente que reintenta con otro horario).
+  record(appointmentBucket);
   res.status(201).json(publicAppointment(appointment));
 });
 

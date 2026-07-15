@@ -78,7 +78,7 @@ export default function Register() {
       if (requestError.status === 409) {
         setFieldErrors({ email: 'Ese correo ya tiene una cuenta. ¿Quieres iniciar sesión?' });
         setError('Revisa los campos marcados para continuar.');
-      } else if (requestError.status === 400) {
+      } else if (requestError.status === 400 || requestError.status === 429) {
         setError(requestError.message);
       } else {
         toast.error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
@@ -95,8 +95,11 @@ export default function Register() {
       const result = await resendVerification(form.email.trim().toLowerCase());
       setSentInfo({ mailSent: Boolean(result.mailSent), devVerifyUrl: result.devVerifyUrl ?? null });
       toast.info('Te reenviamos el correo de verificación.');
-    } catch {
-      toast.error('No se pudo reenviar el correo. Inténtalo de nuevo.');
+    } catch (resendError) {
+      // 429 = límite de reenvíos: el mensaje del server pide esperar.
+      toast.error(
+        resendError.status === 429 ? resendError.message : 'No se pudo reenviar el correo. Inténtalo de nuevo.',
+      );
     } finally {
       setSubmitting(false);
     }

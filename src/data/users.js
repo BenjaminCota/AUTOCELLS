@@ -62,7 +62,12 @@ export async function resendVerification(email) {
     method: 'POST',
     body: JSON.stringify({ email }),
   });
-  if (!response.ok) throw new Error('No se pudo reenviar el correo');
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const error = new Error(data.error ?? 'No se pudo reenviar el correo');
+    error.status = response.status;
+    throw error;
+  }
   return response.json();
 }
 
@@ -71,7 +76,14 @@ export async function validateCredentials(email, password) {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  if (!response.ok) throw new Error('Error al validar credenciales');
+  if (!response.ok) {
+    // 429 = demasiados intentos fallidos: el mensaje del server se muestra
+    // tal cual en el formulario de login.
+    const data = await response.json().catch(() => ({}));
+    const error = new Error(data.error ?? 'Error al validar credenciales');
+    error.status = response.status;
+    throw error;
+  }
   return response.json();
 }
 
