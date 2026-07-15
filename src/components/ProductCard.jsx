@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
-import { Smartphone, Shield, BatteryCharging, Cable, Sparkles, ShoppingCart } from 'lucide-react';
+import { Smartphone, Shield, BatteryCharging, Cable, Sparkles, ShoppingCart, ShieldCheck, ShieldOff } from 'lucide-react';
 import Badge from './Badge';
 import { categorySlug } from '../data/products';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
+import { warrantyLabel } from '../lib/warranty';
 
 export const categoryIcons = {
   Celulares: Smartphone,
@@ -22,6 +23,8 @@ export const priceFormatter = new Intl.NumberFormat('es-MX', {
 export default function ProductCard({ product }) {
   const Icon = categoryIcons[product.category] ?? Smartphone;
   const isAgotado = product.stock === 'agotado';
+  // null también para celulares marcados "sin garantía" — ahí se dice explícito.
+  const warranty = warrantyLabel(product);
   const { addItem } = useCart();
   const toast = useToast();
 
@@ -59,6 +62,12 @@ export default function ProductCard({ product }) {
         </p>
         <h3 className="font-semibold text-secondary">{product.name}</h3>
         <p className="mt-1 text-lg font-bold text-secondary">{priceFormatter.format(product.price)}</p>
+        {product.category === 'Celulares' && (
+          <p className="flex items-center gap-1 text-xs text-muted">
+            {warranty ? <ShieldCheck className="h-3.5 w-3.5" /> : <ShieldOff className="h-3.5 w-3.5" />}
+            {warranty ?? 'Sin garantía'}
+          </p>
+        )}
 
         <div className="mt-3 flex gap-2">
           <Link

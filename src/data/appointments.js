@@ -3,6 +3,7 @@
 // presentación (los horarios de la tienda), pero los horarios ocupados se
 // consultan al servidor.
 import { apiUrl } from '../lib/api';
+import { authHeaders } from '../routes/auth';
 
 // Bloques donde se aceptan citas (inicio incluido, fin excluido, en minutos
 // del día), definidos por la tienda para respetar su horario y el cambio de
@@ -21,13 +22,12 @@ export function formatDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
-export async function getAppointments({ date, email, phone } = {}) {
-  const params = new URLSearchParams();
-  if (date) params.set('date', date);
-  if (email) params.set('email', email);
-  if (phone) params.set('phone', phone);
-  const query = params.size > 0 ? `?${params}` : '';
-  const response = await fetch(apiUrl(`citas${query}`));
+// Sin filtros exige sesión: el server decide qué regresar según el token
+// (admin = todas; cliente = solo las suyas). Con ?date= es público, pero solo
+// regresa los horarios ocupados ({time}), sin datos de clientes.
+export async function getAppointments({ date } = {}) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : '';
+  const response = await fetch(apiUrl(`citas${query}`), { headers: authHeaders() });
   if (!response.ok) throw new Error('Error al consultar las citas');
   return response.json();
 }

@@ -38,9 +38,12 @@
 
   /* Transición entre páginas: la nueva página se desliza en la dirección del nav
      (Inicio→Catálogo entra desde la derecha; al regresar, desde la izquierda).
-     La dirección la decide MainLayout comparando el orden de las rutas. */
-  --animate-page-in-right: page-in-right 450ms var(--ease-snappy) both;
-  --animate-page-in-left: page-in-left 450ms var(--ease-snappy) both;
+     La dirección la decide MainLayout comparando el orden de las rutas.
+     fill-mode "backwards" (no "both"/"forwards"): si el transform final quedara
+     aplicado, <main> sería containing block permanente de position:fixed y
+     cualquier overlay hijo se posicionaría contra la página, no el viewport. */
+  --animate-page-in-right: page-in-right 450ms var(--ease-snappy) backwards;
+  --animate-page-in-left: page-in-left 450ms var(--ease-snappy) backwards;
 
   /* Entrada de las notificaciones toast (ToastContext). */
   --animate-toast-in: toast-in 300ms var(--ease-snappy) both;

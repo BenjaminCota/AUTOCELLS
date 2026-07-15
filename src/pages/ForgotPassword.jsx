@@ -5,12 +5,8 @@ import logoFull from '../assets/logo-full.png';
 import FormField from '../components/FormField';
 import Alert from '../components/Alert';
 import { useToast } from '../context/ToastContext';
-import {
-  EMAIL_PATTERN,
-  findUserByEmail,
-  updatePassword,
-  generateVerificationCode,
-} from '../data/users';
+import { requestPasswordReset, validateResetCode, resetPassword } from '../data/users';
+import { LIMITS, validateEmail, validatePassword } from '../lib/validation';
 
 const stepCopy = {
   email: {
@@ -18,8 +14,8 @@ const stepCopy = {
     subtitle: 'Escribe el correo con el que te registraste.',
   },
   verify: {
-    title: 'Verifica tu correo',
-    subtitle: 'Escribe el código que te enviamos para continuar.',
+    title: 'Revisa tu correo',
+    subtitle: 'Te enviamos un código de 6 dígitos. Vence en 30 minutos.',
   },
   reset: {
     title: 'Nueva contraseña',
@@ -35,11 +31,13 @@ export default function ForgotPassword() {
   const location = useLocation();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  // Flujo: 'email' → 'verify' (código simulado) → 'reset' → 'done'.
+  // Flujo: 'email' → 'verify' (código real por correo) → 'reset' → 'done'.
+  // El código lo genera y valida el server (/usuarios/recuperar); aquí nunca
+  // se conoce, salvo en dev sin SMTP, donde viaja como devResetCode.
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
-  const [expectedCode, setExpectedCode] = useState('');
+  const [devCode, setDevCode] = useState(null);
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
   const [password, setPassword] = useState('');
@@ -51,48 +49,58 @@ export default function ForgotPassword() {
     if (busy) return;
 
     const normalized = email.trim().toLowerCase();
-    if (!EMAIL_PATTERN.test(normalized)) {
-      setEmailError('Ingresa un correo válido (ej. tu@correo.com).');
+    const invalid = validateEmail(normalized);
+    if (invalid) {
+      setEmailError(invalid);
       return;
     }
 
     setBusy(true);
     try {
-      // La cuenta se busca en la base de datos.
-      if (!(await findUserByEmail(normalized))) {
-        setEmailError('No encontramos una cuenta con ese correo.');
-        return;
-      }
-      setExpectedCode(generateVerificationCode());
+      // El server genera el código, lo guarda con vigencia de 30 minutos y lo
+      // manda por correo.
+      const result = await requestPasswordReset(normalized);
+      setDevCode(result.devResetCode ?? null);
       setCodeInput('');
       setCodeError('');
       setStep('verify');
       toast.info('Te enviamos un código de recuperación a tu correo.');
-    } catch {
-      toast.error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
+    } catch (requestError) {
+      if (requestError.status === 404) {
+        setEmailError('No encontramos una cuenta con ese correo.');
+      } else {
+        toast.error(requestError.message ?? 'No se pudo conectar con el servidor. Inténtalo de nuevo.');
+      }
     } finally {
       setBusy(false);
     }
   }
 
-  function handleVerify(event) {
+  async function handleVerify(event) {
     event.preventDefault();
+    if (busy) return;
 
-    if (codeInput.trim() !== expectedCode) {
-      setCodeError('El código no coincide. Revísalo e inténtalo de nuevo.');
-      return;
+    setBusy(true);
+    try {
+      // El código se confirma con el server antes de pedir la contraseña
+      // nueva (los intentos fallidos cuentan: máximo 5 por código).
+      await validateResetCode(email.trim().toLowerCase(), codeInput.trim());
+      setStep('reset');
+    } catch (requestError) {
+      setCodeError(requestError.message ?? 'No se pudo validar el código.');
+    } finally {
+      setBusy(false);
     }
-    setStep('reset');
   }
 
   async function handleReset(event) {
     event.preventDefault();
     if (busy) return;
 
+    // Mismas reglas que el registro (lib/validation.js, compartidas con el server).
     const errors = {};
-    if (password.length < 6) {
-      errors.password = 'La contraseña debe tener al menos 6 caracteres.';
-    }
+    const passwordError = validatePassword(password);
+    if (passwordError) errors.password = passwordError;
     if (confirm !== password) {
       errors.confirm = 'Las contraseñas no coinciden.';
     }
@@ -103,11 +111,15 @@ export default function ForgotPassword() {
 
     setBusy(true);
     try {
-      await updatePassword(email, password);
+      // El server vuelve a validar el código junto con la contraseña nueva
+      // (por si venció entre un paso y otro) y cierra las sesiones abiertas.
+      await resetPassword(email.trim().toLowerCase(), codeInput.trim(), password);
       setStep('done');
       toast.success('Tu contraseña se actualizó correctamente.');
-    } catch {
-      toast.error('No se pudo actualizar la contraseña. Inténtalo de nuevo.');
+    } catch (requestError) {
+      toast.error(requestError.message ?? 'No se pudo actualizar la contraseña. Inténtalo de nuevo.');
+      // 410 = el código venció o se agotaron los intentos: hay que pedir otro.
+      if (requestError.status === 410) setStep('email');
     } finally {
       setBusy(false);
     }
@@ -161,18 +173,18 @@ export default function ForgotPassword() {
 
         {step === 'verify' && (
           <form onSubmit={handleVerify} noValidate className="mt-6 flex flex-col gap-4">
-            {/* Simulación del correo: sin backend, el código se muestra aquí
-                mismo. Con backend real este recuadro desaparece. */}
-            <div className="rounded-card border border-primary-dark/20 bg-primary/5 p-4 text-center">
-              <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary-dark">
-                <Mail className="h-4 w-4" />
-                Correo simulado (demo sin backend)
-              </p>
-              <p className="mt-2 text-sm text-secondary">Tu código de recuperación es:</p>
-              <p className="mt-1 text-3xl font-bold tracking-[0.3em] text-secondary">
-                {expectedCode}
-              </p>
-            </div>
+            {/* Solo en dev sin SMTP: el server regresa el código para poder
+                probar el flujo (en producción con correo real nunca viaja). */}
+            {devCode && (
+              <div className="rounded-card border border-primary-dark/20 bg-primary/5 p-4 text-center">
+                <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary-dark">
+                  <Mail className="h-4 w-4" />
+                  Correo simulado (sin SMTP configurado)
+                </p>
+                <p className="mt-2 text-sm text-secondary">Tu código de recuperación es:</p>
+                <p className="mt-1 text-3xl font-bold tracking-[0.3em] text-secondary">{devCode}</p>
+              </div>
+            )}
             <FormField
               label="Código de recuperación"
               id="code"
@@ -190,10 +202,18 @@ export default function ForgotPassword() {
             />
             <button
               type="submit"
-              className="mt-2 flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+              disabled={busy}
+              className="mt-2 flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
             >
               <ShieldCheck className="h-4 w-4" />
-              Verificar código
+              {busy ? 'Verificando…' : 'Verificar código'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep('email')}
+              className="text-sm font-medium text-muted transition-colors hover:text-primary-dark"
+            >
+              ¿No te llegó? Pedir un código nuevo
             </button>
           </form>
         )}
@@ -206,13 +226,14 @@ export default function ForgotPassword() {
               name="password"
               type="password"
               autoComplete="new-password"
+              maxLength={LIMITS.password.max}
               error={resetErrors.password}
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
                 setResetErrors((prev) => ({ ...prev, password: '' }));
               }}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mínimo 6 caracteres, letras y números"
             />
             <FormField
               label="Confirmar contraseña"

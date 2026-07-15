@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite';
 const apiProxy = { '/api': 'http://localhost:3001' };
 
 export default defineConfig(({ mode }) => ({
-  base: mode === 'production' ? '/AUTOCELLS/' : '/',
+  base: '/',
   plugins: [react(), tailwindcss()],
   server: { proxy: apiProxy },
   preview: { proxy: { '/AUTOCELLS/api': 'http://localhost:3001' } },

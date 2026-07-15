@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Smartphone, Unlock, ShieldCheck, Award, Truck } from 'lucide-react';
-import { categories, useCatalog } from '../data/products';
-import ProductCard, { categoryIcons } from '../components/ProductCard';
+import { categories, categorySlug, useCatalog } from '../data/products';
+import ProductCard, { categoryIcons, priceFormatter } from '../components/ProductCard';
 import { STORE_FACEBOOK_URL } from '../data/store';
 import { FacebookIcon } from '../components/SocialIcons';
 
@@ -13,7 +13,8 @@ const featuredProductIds = ['iphone-15-128gb', 'iphone-14-128gb', 'funda-silicon
 
 const trustPoints = [
   { icon: ShieldCheck, title: 'Compra segura', description: 'Equipos revisados antes de entregarse.' },
-  { icon: Award, title: 'Garantía incluida', description: 'Respaldo en todos los equipos nuevos y seminuevos.' },
+  // Regla real de garantía (lib/warranty.js): solo celulares, 1 mes (iPhone 17: 2).
+  { icon: Award, title: 'Garantía incluida', description: '1 mes en todos los celulares y 2 meses en iPhone 17.' },
   { icon: Truck, title: 'Entrega local', description: 'Recoge en tienda en San Luis Río Colorado.' },
 ];
 
@@ -21,9 +22,10 @@ export default function Home() {
   const { products } = useCatalog();
 
   // El producto anclado desde el admin (estrella en Admin → Productos) siempre
-  // va primero. El resto rellena con los ids capturados a mano o, si no existen
-  // (el catálogo estático está vacío), con los más recientes del admin.
-  const featuredProducts = useMemo(() => {
+  // va primero y además protagoniza el hero. El resto rellena con los ids
+  // capturados a mano o, si no existen (el catálogo estático está vacío), con
+  // los más recientes del admin.
+  const { pinned, featuredProducts } = useMemo(() => {
     const pinned = products.find((product) => product.featured);
     const handpicked = featuredProductIds
       .map((id) => products.find((product) => product.id === id))
@@ -31,12 +33,12 @@ export default function Home() {
     const rest = (handpicked.length > 0 ? handpicked : products).filter(
       (product) => product !== pinned,
     );
-    return [...(pinned ? [pinned] : []), ...rest].slice(0, 4);
+    return { pinned, featuredProducts: [...(pinned ? [pinned] : []), ...rest].slice(0, 4) };
   }, [products]);
 
-  // El brief pide "hero con foto de iPhone": se usa la vista frontal del iPhone 15
-  // (images[1]); si el producto desapareciera del catálogo, cae al ícono de siempre.
-  const heroImage = products.find((product) => product.id === 'iphone-15-128gb')?.images?.[1];
+  // Los productos del admin pueden venir sin foto: mismo fallback al ícono de
+  // categoría que usa ProductCard.
+  const PinnedIcon = pinned ? (categoryIcons[pinned.category] ?? Smartphone) : Smartphone;
 
   return (
     <div>
@@ -69,13 +71,35 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="animate-hero-in-image flex aspect-square items-center justify-center rounded-card bg-bg-alt [animation-delay:90ms]">
-            {heroImage ? (
-              <img src={heroImage} alt="iPhone 15 en AUTOCELLS" className="h-full w-full object-contain p-12" />
-            ) : (
+          {/* El hero muestra el producto destacado (columna `featured`); sin
+              destacado se queda el placeholder de siempre. */}
+          {pinned ? (
+            <Link
+              to={`/catalogo/${categorySlug(pinned.category)}/${pinned.id}`}
+              className="group animate-hero-in-image relative flex aspect-square items-center justify-center overflow-hidden rounded-card bg-bg-alt [animation-delay:90ms]"
+            >
+              {pinned.image ? (
+                <img
+                  src={pinned.image}
+                  alt={pinned.name}
+                  className="h-full w-full object-contain p-12 pb-24 transition-transform duration-200 ease-snappy group-hover:scale-[1.03]"
+                />
+              ) : (
+                <PinnedIcon className="h-32 w-32 text-primary-dark" strokeWidth={1.25} />
+              )}
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-white/85 px-6 py-4 backdrop-blur-sm">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted">Producto destacado</p>
+                  <p className="font-semibold text-secondary group-hover:text-primary-dark">{pinned.name}</p>
+                </div>
+                <p className="text-lg font-bold text-secondary">{priceFormatter.format(pinned.price)}</p>
+              </div>
+            </Link>
+          ) : (
+            <div className="animate-hero-in-image flex aspect-square items-center justify-center rounded-card bg-bg-alt [animation-delay:90ms]">
               <Smartphone className="h-32 w-32 text-primary-dark" strokeWidth={1.25} />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </section>
 

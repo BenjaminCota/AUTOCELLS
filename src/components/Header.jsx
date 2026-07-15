@@ -6,6 +6,7 @@ import ConfirmDialog from './ConfirmDialog';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { getCurrentUser, logout } from '../routes/auth';
+import { logoutSession } from '../data/users';
 
 // Saludo + botón de salir cuando hay sesión; botón de login cuando no.
 // El Header se re-renderiza en cada navegación (MainLayout usa useLocation),
@@ -17,6 +18,10 @@ function AccountActions({ onNavigate }) {
   const user = getCurrentUser();
 
   function handleLogout() {
+    // Invalida el token en el servidor ANTES de borrar la sesión local (el
+    // header de autorización sale del localStorage). Best-effort: no se
+    // espera la respuesta para no trabar el cierre de sesión.
+    logoutSession();
     logout();
     setConfirmingLogout(false);
     onNavigate?.();

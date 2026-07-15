@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { getAdminServices } from '../data/adminServices';
 import { getSlotsForDate, formatDateKey, addAppointment } from '../data/appointments';
-import { PHONE_PATTERN } from '../data/users';
+import { LIMITS, validatePersonName, validatePhone, validateDevice } from '../lib/validation';
 import { getCurrentUser } from '../routes/auth';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
@@ -84,9 +84,10 @@ function BookingModal({ services, onClose }) {
     return { year: today.getFullYear(), month: today.getMonth() };
   });
   const [time, setTime] = useState('');
-  // Si hay sesión, el nombre se precarga desde la cuenta.
+  // Si hay sesión, el nombre y el teléfono se precargan desde la cuenta
+  // (sesiones iniciadas antes de que la sesión guardara phone caen al '').
   const [name, setName] = useState(() => getCurrentUser()?.name ?? '');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(() => getCurrentUser()?.phone ?? '');
   const [device, setDevice] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [confirmed, setConfirmed] = useState(null);
@@ -153,12 +154,14 @@ function BookingModal({ services, onClose }) {
     event.preventDefault();
     if (submitting) return;
 
+    // Reglas compartidas con el server (lib/validation.js).
     const errors = {};
-    if (!name.trim()) errors.name = 'Cuéntanos cómo te llamas.';
-    if (!device.trim()) errors.device = 'Dinos qué equipo traes (ej. iPhone 13).';
-    if (!PHONE_PATTERN.test(phone.replace(/\D/g, ''))) {
-      errors.phone = 'Ingresa un teléfono a 10 dígitos, sin espacios ni guiones.';
-    }
+    const nameError = validatePersonName(name);
+    if (nameError) errors.name = nameError;
+    const deviceError = validateDevice(device);
+    if (deviceError) errors.device = deviceError;
+    const phoneError = validatePhone(phone);
+    if (phoneError) errors.phone = phoneError;
     if (!time) errors.time = 'Elige un horario disponible.';
 
     if (Object.keys(errors).length > 0) {
@@ -375,24 +378,26 @@ function BookingModal({ services, onClose }) {
         </div>
 
         <FormField
-          label="Nombre"
+          label="Nombre completo"
           id="booking-name"
           name="name"
           type="text"
           autoComplete="name"
+          maxLength={LIMITS.name.max}
           error={fieldErrors.name}
           value={name}
           onChange={(event) => {
             setName(event.target.value);
             setFieldErrors((prev) => ({ ...prev, name: '' }));
           }}
-          placeholder="Tu nombre"
+          placeholder="Nombre y apellido"
         />
         <FormField
           label="Equipo a liberar"
           id="booking-device"
           name="device"
           type="text"
+          maxLength={LIMITS.device.max}
           error={fieldErrors.device}
           value={device}
           onChange={(event) => {
@@ -407,6 +412,7 @@ function BookingModal({ services, onClose }) {
           name="phone"
           type="tel"
           autoComplete="tel"
+          maxLength={14}
           error={fieldErrors.phone}
           value={phone}
           onChange={(event) => {

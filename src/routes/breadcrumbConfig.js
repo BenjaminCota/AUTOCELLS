@@ -16,6 +16,7 @@ export const breadcrumbNameMap = {
   cuenta: 'Mi cuenta',
   login: 'Iniciar sesión',
   registro: 'Crear cuenta',
+  'verificar-correo': 'Verificar correo',
   recuperar: 'Recuperar contraseña',
   admin: 'Admin',
   dashboard: 'Dashboard',

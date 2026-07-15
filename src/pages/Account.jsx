@@ -14,7 +14,8 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { priceFormatter } from '../components/ProductCard';
 import { useToast } from '../context/ToastContext';
 import { isAuthenticated, isAdmin, getCurrentUser, login } from '../routes/auth';
-import { PHONE_PATTERN, findUserByEmail, updateUser } from '../data/users';
+import { findUserByEmail, updateUser } from '../data/users';
+import { LIMITS, validatePersonName, validatePhone } from '../lib/validation';
 import { getAppointments } from '../data/appointments';
 import { getWebOrders, updateWebOrderStatus } from '../data/orders';
 
@@ -42,7 +43,9 @@ export default function Account() {
         const account = await findUserByEmail(user.email);
         const [userOrders, userAppointments] = await Promise.all([
           getWebOrders(user.email),
-          getAppointments({ email: user.email, phone: account?.phone ?? '' }),
+          // El server regresa las citas de la sesión (correo o teléfono de la
+          // cuenta); ya no se le pasan filtros desde aquí.
+          getAppointments(),
         ]);
         if (!active) return;
         if (account?.phone) setForm((prev) => ({ ...prev, phone: account.phone }));
@@ -78,11 +81,12 @@ export default function Account() {
     event.preventDefault();
     if (saving) return;
 
+    // Reglas compartidas con el server (lib/validation.js).
     const errors = {};
-    if (!form.name.trim()) errors.name = 'Ingresa tu nombre.';
-    if (!PHONE_PATTERN.test(form.phone.replace(/\D/g, ''))) {
-      errors.phone = 'Ingresa un teléfono a 10 dígitos, sin espacios ni guiones.';
-    }
+    const nameError = validatePersonName(form.name);
+    if (nameError) errors.name = nameError;
+    const phoneError = validatePhone(form.phone);
+    if (phoneError) errors.phone = phoneError;
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -91,8 +95,9 @@ export default function Account() {
     setSaving(true);
     try {
       await updateUser(user.email, { name: form.name.trim(), phone: form.phone.replace(/\D/g, '') });
-      // La sesión guarda el nombre (saludo del Header): mantenerla en sync.
-      login({ ...user, name: form.name.trim() });
+      // La sesión guarda nombre y teléfono (saludo del Header, prellenado de
+      // la cita en Servicios): mantenerla en sync.
+      login({ ...user, name: form.name.trim(), phone: form.phone.replace(/\D/g, '') });
       toast.success('Tus datos se actualizaron.');
     } catch {
       toast.error('No se pudieron guardar tus datos. Inténtalo de nuevo.');
@@ -137,14 +142,16 @@ export default function Account() {
             Tus datos
           </h2>
           <FormField
-            label="Nombre"
+            label="Nombre completo"
             id="name"
             name="name"
             type="text"
             autoComplete="name"
+            maxLength={LIMITS.name.max}
             error={fieldErrors.name}
             value={form.name}
             onChange={handleChange}
+            placeholder="Nombre y apellido"
           />
           <FormField
             label="Teléfono"
@@ -152,6 +159,7 @@ export default function Account() {
             name="phone"
             type="tel"
             autoComplete="tel"
+            maxLength={14}
             error={fieldErrors.phone}
             value={form.phone}
             onChange={handleChange}

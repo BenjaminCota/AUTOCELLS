@@ -8,10 +8,7 @@ import { isAuthenticated, isAdmin, login } from '../routes/auth';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { validateCredentials } from '../data/users';
-
-// Credenciales demo del admin: sin backend real todavía.
-const DEMO_EMAIL = 'admin@autocells.com';
-const DEMO_PASSWORD = 'admin123';
+import { validateEmail } from '../lib/validation';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -63,14 +60,12 @@ export default function Login() {
       return;
     }
 
-    // El admin demo se valida localmente: no existe en la base de datos.
-    if (email === DEMO_EMAIL) {
-      if (form.password !== DEMO_PASSWORD) {
-        setError('La contraseña es incorrecta.');
-        setFieldErrors({ email: '', password: 'Contraseña incorrecta.' });
-        return;
-      }
-      finishLogin({ name: 'Administrador', email, role: 'admin' });
+    // Solo formato del correo: aquí no aplican reglas de fuerza de contraseña
+    // (las cuentas se validan contra la base, no contra las reglas de registro).
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError('Revisa tu correo para continuar.');
+      setFieldErrors({ email: emailError, password: '' });
       return;
     }
 
@@ -87,7 +82,21 @@ export default function Login() {
         }
         return;
       }
-      finishLogin({ name: result.user.name, email: result.user.email, role: 'user' });
+      // Iniciar sesión sin verificar sí se permite; lo que se bloquea es la
+      // compra (Checkout y el server lo rechazan). Se avisa desde aquí.
+      if (!result.user.verified) {
+        toast.info('Tu cuenta aún no está verificada: revisa tu correo para poder comprar.');
+      }
+      // La sesión guarda el token que autoriza el API y el rol/teléfono que
+      // regresa el server (el admin ya es una cuenta real de la base, creada
+      // con server/create-admin.js — no hay credenciales demo en el código).
+      finishLogin({
+        token: result.token,
+        name: result.user.name,
+        email: result.user.email,
+        phone: result.user.phone,
+        role: result.user.role ?? 'user',
+      });
     } catch {
       toast.error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
     } finally {
@@ -169,10 +178,6 @@ export default function Login() {
             ¿Olvidaste tu contraseña?
           </Link>
         </div>
-
-        <p className="mt-6 text-center text-xs text-muted">
-          Demo admin: {DEMO_EMAIL} / {DEMO_PASSWORD}
-        </p>
       </div>
     </div>
   );

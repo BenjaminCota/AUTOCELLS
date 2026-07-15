@@ -6,6 +6,7 @@ import FormField from '../../components/FormField';
 import Alert from '../../components/Alert';
 import { useToast } from '../../context/ToastContext';
 import { addAdminService, deleteAdminService, getAdminServices, updateAdminService } from '../../data/adminServices';
+import { LIMITS, validatePrice, validateDescription } from '../../lib/validation';
 
 const emptyForm = {
   name: '',
@@ -52,9 +53,16 @@ export default function Services() {
   function handleSubmit(event) {
     event.preventDefault();
 
+    // Mismos límites que los productos (lib/validation.js), con copy de servicio.
     const errors = {};
-    if (!form.name.trim()) errors.name = 'Ingresa el nombre del servicio.';
-    if (form.price === '' || Number(form.price) <= 0) errors.price = 'El costo debe ser mayor a $0.';
+    const name = form.name.trim();
+    if (!name) errors.name = 'Ingresa el nombre del servicio.';
+    else if (name.length < LIMITS.productName.min) errors.name = `El nombre debe tener al menos ${LIMITS.productName.min} caracteres.`;
+    else if (name.length > LIMITS.productName.max) errors.name = `El nombre no puede pasar de ${LIMITS.productName.max} caracteres.`;
+    const priceError = validatePrice(form.price, 'El costo');
+    if (priceError) errors.price = priceError;
+    const descriptionError = validateDescription(form.description);
+    if (descriptionError) errors.description = descriptionError;
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -153,7 +161,15 @@ export default function Services() {
           <form onSubmit={handleSubmit} noValidate className="mt-4 flex flex-col gap-4">
             {formError ? <Alert variant="error">{formError}</Alert> : null}
 
-            <FormField label="Nombre del servicio" id="name" name="name" error={fieldErrors.name} value={form.name} onChange={handleChange} />
+            <FormField
+              label="Nombre del servicio"
+              id="name"
+              name="name"
+              maxLength={LIMITS.productName.max}
+              error={fieldErrors.name}
+              value={form.name}
+              onChange={handleChange}
+            />
             <FormField
               label="Costo (MXN)"
               id="price"
@@ -170,6 +186,8 @@ export default function Services() {
               id="description"
               name="description"
               textarea
+              maxLength={LIMITS.description.max}
+              error={fieldErrors.description}
               value={form.description}
               onChange={handleChange}
             />

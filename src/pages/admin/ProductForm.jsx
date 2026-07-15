@@ -6,6 +6,14 @@ import Alert from '../../components/Alert';
 import Modal from '../../components/Modal';
 import { useToast } from '../../context/ToastContext';
 import { addAdminProduct, getAdminProduct, updateAdminProduct } from '../../data/adminProducts';
+import { warrantyLabel } from '../../lib/warranty';
+import {
+  LIMITS,
+  validateProductName,
+  validatePrice,
+  validateStock,
+  validateDescription,
+} from '../../lib/validation';
 
 const categoryOptions = ['Celular', 'Fundas', 'Cargadores', 'Accesorios', 'Protector de pantalla'];
 const statusOptions = [
@@ -57,6 +65,11 @@ const privacyOptions = [
   { value: 'Sí', label: 'Sí' },
   { value: 'No', label: 'No' },
 ];
+// Solo aplica a Celulares (los accesorios nunca llevan garantía, ver lib/warranty.js).
+const warrantyOptions = [
+  { value: 'Sí', label: 'Con garantía' },
+  { value: 'No', label: 'Sin garantía' },
+];
 const caseCompatibilityOptions = [
   {
     group: 'iPhone',
@@ -96,6 +109,7 @@ const emptyForm = {
   brand: '',
   storage: '128GB',
   color: '',
+  warranty: 'Sí',
   compatibleModels: [],
   customCompatibleModel: '',
   chargerInput: '',
@@ -132,6 +146,7 @@ function getInitialForm(existingProduct) {
     brand: existingProduct.brand ?? '',
     storage: existingProduct.storage ?? '128GB',
     color: existingProduct.color ?? '',
+    warranty: existingProduct.warranty ?? 'Sí',
     compatibleModels: existingProduct.compatibleModels ?? [],
     customCompatibleModel: existingProduct.customCompatibleModel ?? '',
     chargerInput: existingProduct.chargerInput ?? '',
@@ -242,10 +257,16 @@ export default function ProductForm() {
   }
 
   function validateForm() {
+    // Reglas compartidas con el server (lib/validation.js).
     const errors = {};
-    if (!form.name.trim()) errors.name = 'Ingresa el nombre del producto.';
-    if (form.price === '' || Number(form.price) <= 0) errors.price = 'El precio debe ser mayor a $0.';
-    if (form.stock === '' || Number(form.stock) < 0) errors.stock = 'El stock no puede ser negativo.';
+    const nameError = validateProductName(form.name);
+    if (nameError) errors.name = nameError;
+    const priceError = validatePrice(form.price);
+    if (priceError) errors.price = priceError;
+    const stockError = validateStock(form.stock);
+    if (stockError) errors.stock = stockError;
+    const descriptionError = validateDescription(form.description);
+    if (descriptionError) errors.description = descriptionError;
 
     if (isCellphoneCategory) {
       if (!form.brand.trim()) errors.brand = 'Ingresa la marca del celular.';
@@ -272,7 +293,9 @@ export default function ProductForm() {
       stock: Number(form.stock),
       status: form.status,
       description: form.description,
-      ...(isCellphoneCategory ? { brand: form.brand, storage: form.storage, color: form.color } : {}),
+      ...(isCellphoneCategory
+        ? { brand: form.brand, storage: form.storage, color: form.color, warranty: form.warranty }
+        : {}),
       ...(isCaseCategory
         ? {
             color: form.color,
@@ -361,6 +384,7 @@ export default function ProductForm() {
             label="Nombre"
             id="name"
             name="name"
+            maxLength={LIMITS.productName.max}
             error={fieldErrors.name}
             value={form.name}
             onChange={handleChange}
@@ -604,24 +628,34 @@ export default function ProductForm() {
           )}
 
           {isCellphoneCategory && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField
-                label="Stock"
-                id="stock"
-                name="stock"
-                type="number"
-                min="0"
-                step="1"
-                error={fieldErrors.stock}
-                value={form.stock}
-                onChange={handleChange}
-              />
-              <div className="flex items-end">
-                <p className="rounded-card border border-dashed border-secondary/20 bg-bg-alt px-4 py-3 text-sm text-muted">
-                  Para celulares, el precio y el stock se mostrarán directamente al cliente.
-                </p>
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  label="Stock"
+                  id="stock"
+                  name="stock"
+                  type="number"
+                  min="0"
+                  step="1"
+                  error={fieldErrors.stock}
+                  value={form.stock}
+                  onChange={handleChange}
+                />
+                <FormField
+                  label="Garantía"
+                  id="warranty"
+                  name="warranty"
+                  select={warrantyOptions}
+                  value={form.warranty}
+                  onChange={handleChange}
+                />
               </div>
-            </div>
+              <p className="rounded-card border border-dashed border-secondary/20 bg-bg-alt px-4 py-3 text-sm text-muted">
+                El precio y el stock se muestran directamente al cliente. Solo los celulares
+                manejan garantía: 1 mes, o 2 meses si es iPhone 17; fundas, cargadores y demás
+                accesorios se venden sin garantía.
+              </p>
+            </>
           )}
 
           <FormField
@@ -629,6 +663,8 @@ export default function ProductForm() {
             id="description"
             name="description"
             textarea
+            maxLength={LIMITS.description.max}
+            error={fieldErrors.description}
             value={form.description}
             onChange={handleChange}
           />
@@ -709,6 +745,13 @@ export default function ProductForm() {
               {(isCellphoneCategory || isCaseCategory) && (
                 <div className="flex flex-wrap gap-2 text-xs text-secondary">
                   {isCellphoneCategory && form.storage && <span className="rounded-full bg-white px-2.5 py-1">{form.storage}</span>}
+                  {isCellphoneCategory && (
+                    <span className="rounded-full bg-white px-2.5 py-1">
+                      {/* La categoría canónica es "Celulares"; el form usa el singular. */}
+                      {warrantyLabel({ category: 'Celulares', name: form.name, warranty: form.warranty }) ??
+                        'Sin garantía'}
+                    </span>
+                  )}
                   {form.color && <span className="rounded-full bg-white px-2.5 py-1">{form.color}</span>}
                   {isCaseCategory && form.compatibleModels.length > 0 && (
                     <span className="rounded-full bg-white px-2.5 py-1">{form.compatibleModels.join(', ')}</span>

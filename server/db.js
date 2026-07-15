@@ -8,13 +8,49 @@ import path from 'node:path';
 const dbPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'autocells.db');
 export const db = new DatabaseSync(dbPath);
 
+// Concurrencia: WAL permite lecturas mientras alguien escribe (el journal por
+// default bloquea la base completa en cada escritura) y es lo que hace seguro
+// correr varios procesos sobre el mismo archivo (ver server/cluster.js).
+// busy_timeout reintenta hasta 5s en vez de tronar con SQLITE_BUSY si dos
+// escrituras coinciden. synchronous NORMAL es el nivel recomendado con WAL:
+// commits más rápidos sin riesgo de corrupción.
+db.exec(`
+  PRAGMA journal_mode = WAL;
+  PRAGMA busy_timeout = 5000;
+  PRAGMA synchronous = NORMAL;
+`);
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     email      TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
     phone      TEXT NOT NULL,
-    -- Texto plano solo como demo escolar: el backend definitivo debe guardar un hash.
+    -- Hash scrypt ("scrypt$salt$hash", ver server/auth.js). Las cuentas de
+    -- antes del hash guardaban texto plano: se migran solas al iniciar sesión.
     password   TEXT NOT NULL,
+    -- 'user' | 'admin'. El admin se crea con server/create-admin.js; el rol
+    -- lo decide siempre esta columna, nunca el cliente.
+    role       TEXT NOT NULL DEFAULT 'user',
+    -- Verificación de correo: la cuenta nace pendiente (0) y solo el enlace
+    -- del correo la pasa a verificada (1). Sin verificar no se puede comprar.
+    verified       INTEGER NOT NULL DEFAULT 0,
+    verify_token   TEXT,
+    verify_expires TEXT,
+    -- Recuperación de contraseña: código de 6 dígitos enviado por correo,
+    -- con vigencia corta y contador de intentos (ver /usuarios/recuperar).
+    reset_code     TEXT,
+    reset_expires  TEXT,
+    reset_attempts INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+
+  -- Sesiones del API (Authorization: Bearer <token>). En SQLite y no en
+  -- memoria para que los workers del cluster compartan las sesiones y un
+  -- redeploy no cierre la sesión de nadie.
+  CREATE TABLE IF NOT EXISTS sessions (
+    token      TEXT PRIMARY KEY,
+    email      TEXT NOT NULL,
+    expires    TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
 
@@ -70,6 +106,50 @@ try {
   db.exec('ALTER TABLE products ADD COLUMN featured INTEGER NOT NULL DEFAULT 0');
 } catch {
   // La columna ya existe.
+}
+
+// Verificación de correo (mismas migraciones ligeras que `featured`). Las
+// cuentas que existieran antes de esta migración quedan verified = 0: tendrán
+// que verificarse con "reenviar correo" para poder comprar.
+for (const alter of [
+  'ALTER TABLE users ADD COLUMN verified INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN verify_token TEXT',
+  'ALTER TABLE users ADD COLUMN verify_expires TEXT',
+  "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",
+  'ALTER TABLE users ADD COLUMN reset_code TEXT',
+  'ALTER TABLE users ADD COLUMN reset_expires TEXT',
+  'ALTER TABLE users ADD COLUMN reset_attempts INTEGER NOT NULL DEFAULT 0',
+]) {
+  try {
+    db.exec(alter);
+  } catch {
+    // La columna ya existe.
+  }
+}
+
+db.exec('CREATE INDEX IF NOT EXISTS idx_users_verify_token ON users (verify_token)');
+// Cerrar las sesiones de una cuenta (cambio de contraseña) busca por email.
+db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_email ON sessions (email)');
+
+// Índices para las consultas reales del API (mis pedidos por correo, citas por
+// día/cliente, catálogo ordenado): con pocos registros no se nota, pero evitan
+// full scans cuando la base crece.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_orders_email ON orders (email);
+  CREATE INDEX IF NOT EXISTS idx_orders_date ON orders (date DESC);
+  CREATE INDEX IF NOT EXISTS idx_appointments_email ON appointments (customer_email);
+  CREATE INDEX IF NOT EXISTS idx_appointments_phone ON appointments (customer_phone);
+  CREATE INDEX IF NOT EXISTS idx_products_order ON products (featured DESC, created_at DESC);
+`);
+
+// La unicidad del horario de citas la garantiza la base, no el "SELECT antes
+// de INSERT" del endpoint (dos peticiones simultáneas pasan ambas ese check —
+// sobre todo con varios workers). En try/catch por si una base vieja ya
+// tuviera un slot duplicado: el índice no se puede crear pero la app funciona.
+try {
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_appointments_slot ON appointments (date, time)');
+} catch {
+  // Datos legados con duplicados: se queda solo la validación del endpoint.
 }
 
 function formatDateKey(date) {

@@ -17,6 +17,7 @@ import Checkout from './pages/Checkout';
 import Account from './pages/Account';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import NotFound from './pages/NotFound';
 
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="cuenta" element={<Account />} />
           <Route path="login" element={<Login />} />
           <Route path="registro" element={<Register />} />
+          <Route path="verificar-correo" element={<VerifyEmail />} />
           <Route path="recuperar" element={<ForgotPassword />} />
           <Route path="*" element={<NotFound />} />
         </Route>

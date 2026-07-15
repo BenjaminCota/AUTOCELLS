@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ShoppingBag, ShoppingCart, Check, PackageSearch } from 'lucide-react';
+import { ShoppingBag, ShoppingCart, Check, PackageSearch, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useCatalog } from '../data/products';
+import { warrantyMonths, warrantyLabel } from '../lib/warranty';
 import ProductCard, { categoryIcons, priceFormatter } from '../components/ProductCard';
 import Badge from '../components/Badge';
 import { useCart } from '../context/CartContext';
@@ -191,6 +192,25 @@ export default function ProductDetail() {
           )}
 
           <p className="text-muted">{product.description}</p>
+
+          {/* La regla de garantía vive en lib/warranty.js — solo celulares. */}
+          {product.category === 'Celulares' ? (
+            warrantyMonths(product) ? (
+              <p className="flex items-center gap-2 rounded-card bg-success/10 px-4 py-3 text-sm font-semibold text-success-dark">
+                <ShieldCheck className="h-5 w-5 shrink-0" />
+                {warrantyLabel(product)} incluida en tu compra.
+              </p>
+            ) : (
+              <p className="flex items-center gap-2 rounded-card bg-bg-alt px-4 py-3 text-sm font-medium text-muted">
+                <ShieldOff className="h-5 w-5 shrink-0" />
+                Este equipo se vende sin garantía.
+              </p>
+            )
+          ) : (
+            <p className="text-xs text-muted">
+              Los accesorios no incluyen garantía — solo los celulares la manejan (1 mes; iPhone 17, 2 meses).
+            </p>
+          )}
 
           <div className="mt-2 flex flex-col gap-3">
             <button

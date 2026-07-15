@@ -7,13 +7,16 @@
     "dev": "concurrently -k -n api,web -c cyan,green \"npm run server\" \"vite\"",
     "dev:web": "vite",
     "server": "node server/index.js",
+    "server:cluster": "node server/cluster.js",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "express": "^5.2.1",
     "lucide-react": "^1.23.0",
+    "nodemailer": "^9.0.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^6.30.4"

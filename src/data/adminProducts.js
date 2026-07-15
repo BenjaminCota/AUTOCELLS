@@ -3,6 +3,9 @@
 // persisten en la base de datos y todas las funciones son async.
 // El id lo genera el servidor (slug del nombre + sufijo de tiempo).
 import { apiUrl } from '../lib/api';
+// Las mutaciones exigen el token del admin (el server valida el rol contra la
+// base, no contra lo que diga el localStorage).
+import { authHeaders } from '../routes/auth';
 
 export async function getAdminProducts() {
   const response = await fetch(apiUrl('productos'));
@@ -21,7 +24,7 @@ export async function getAdminProduct(id) {
 export async function addAdminProduct(data) {
   const response = await fetch(apiUrl('productos'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error('No se pudo agregar el producto');
@@ -31,7 +34,7 @@ export async function addAdminProduct(data) {
 export async function updateAdminProduct(id, data) {
   const response = await fetch(apiUrl(`productos/${encodeURIComponent(id)}`), {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error('No se pudo actualizar el producto');
@@ -43,7 +46,7 @@ export async function updateAdminProduct(id, data) {
 export async function setAdminProductFeatured(id, featured) {
   const response = await fetch(apiUrl(`productos/${encodeURIComponent(id)}/destacado`), {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ featured }),
   });
   if (!response.ok) throw new Error('No se pudo actualizar el producto destacado');
@@ -53,6 +56,7 @@ export async function setAdminProductFeatured(id, featured) {
 export async function deleteAdminProduct(id) {
   const response = await fetch(apiUrl(`productos/${encodeURIComponent(id)}`), {
     method: 'DELETE',
+    headers: authHeaders(),
   });
   if (!response.ok) throw new Error('No se pudo eliminar el producto');
   return true;

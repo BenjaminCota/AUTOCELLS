@@ -1,36 +1,34 @@
 import { useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { UserPlus, Mail, ShieldCheck, ArrowLeft, LoaderCircle } from 'lucide-react';
+import { Link, Navigate, useLocation } from 'react-router-dom';
+import { UserPlus, Mail, MailCheck, ArrowLeft, LoaderCircle } from 'lucide-react';
 import logoFull from '../assets/logo-full.png';
 import FormField from '../components/FormField';
 import Alert from '../components/Alert';
-import { isAuthenticated, isAdmin, login } from '../routes/auth';
-import { useCart } from '../context/CartContext';
+import { isAuthenticated, isAdmin } from '../routes/auth';
 import { useToast } from '../context/ToastContext';
+import { registerUser, resendVerification } from '../data/users';
 import {
-  EMAIL_PATTERN,
-  PHONE_PATTERN,
-  findUserByEmail,
-  registerUser,
-  generateVerificationCode,
-} from '../data/users';
+  LIMITS,
+  validatePersonName,
+  validateEmail,
+  validatePhone,
+  validatePassword,
+} from '../lib/validation';
 
 const emptyForm = { name: '', email: '', phone: '', password: '', confirm: '' };
 
 export default function Register() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { openCart } = useCart();
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
-  // step: 'data' (formulario) → 'verify' (código simulado por correo).
+  // step: 'data' (formulario) → 'sent' (la cuenta quedó pendiente y el enlace
+  // de verificación viajó por correo; ver server/mailer.js).
   const [step, setStep] = useState('data');
-  const [expectedCode, setExpectedCode] = useState('');
-  const [codeInput, setCodeInput] = useState('');
-  const [codeError, setCodeError] = useState('');
+  // Sin SMTP configurado (dev) el server regresa el enlace para mostrarlo aquí.
+  const [sentInfo, setSentInfo] = useState({ mailSent: false, devVerifyUrl: null });
 
   if (isAuthenticated()) {
     return <Navigate to={isAdmin() ? '/admin/dashboard' : '/'} replace />;
@@ -48,17 +46,17 @@ export default function Register() {
     if (submitting) return;
 
     const email = form.email.trim().toLowerCase();
+    // Los validadores compartidos (lib/validation.js) regresan el mensaje o
+    // null; el server aplica exactamente las mismas reglas.
     const errors = {};
-    if (!form.name.trim()) errors.name = 'Cuéntanos cómo te llamas.';
-    if (!EMAIL_PATTERN.test(email)) {
-      errors.email = 'Ingresa un correo válido (ej. tu@correo.com).';
-    }
-    if (!PHONE_PATTERN.test(form.phone.replace(/\D/g, ''))) {
-      errors.phone = 'Ingresa un teléfono a 10 dígitos, sin espacios ni guiones.';
-    }
-    if (form.password.length < 6) {
-      errors.password = 'La contraseña debe tener al menos 6 caracteres.';
-    }
+    const nameError = validatePersonName(form.name);
+    if (nameError) errors.name = nameError;
+    const emailError = validateEmail(email);
+    if (emailError) errors.email = emailError;
+    const phoneError = validatePhone(form.phone);
+    if (phoneError) errors.phone = phoneError;
+    const passwordError = validatePassword(form.password);
+    if (passwordError) errors.password = passwordError;
     if (form.confirm !== form.password) {
       errors.confirm = 'Las contraseñas no coinciden.';
     }
@@ -71,43 +69,35 @@ export default function Register() {
 
     setSubmitting(true);
     try {
-      // La unicidad del correo se consulta en la base de datos.
-      if (await findUserByEmail(email)) {
+      // La cuenta se crea pendiente de verificar; no hay sesión hasta que el
+      // usuario confirme su correo e inicie sesión.
+      const created = await registerUser(form);
+      setSentInfo({ mailSent: Boolean(created.mailSent), devVerifyUrl: created.devVerifyUrl ?? null });
+      setStep('sent');
+    } catch (requestError) {
+      if (requestError.status === 409) {
         setFieldErrors({ email: 'Ese correo ya tiene una cuenta. ¿Quieres iniciar sesión?' });
         setError('Revisa los campos marcados para continuar.');
-        return;
+      } else if (requestError.status === 400) {
+        setError(requestError.message);
+      } else {
+        toast.error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
       }
-      setExpectedCode(generateVerificationCode());
-      setCodeInput('');
-      setCodeError('');
-      setStep('verify');
-      toast.info('Te enviamos un código de verificación a tu correo.');
-    } catch {
-      toast.error('No se pudo conectar con el servidor. Inténtalo de nuevo.');
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleVerify(event) {
-    event.preventDefault();
+  async function handleResend() {
     if (submitting) return;
-
-    if (codeInput.trim() !== expectedCode) {
-      setCodeError('El código no coincide. Revísalo e inténtalo de nuevo.');
-      return;
-    }
-
     setSubmitting(true);
     try {
-      const user = await registerUser(form);
-      login({ name: user.name, email: user.email, role: 'user' });
-      toast.success(`¡Cuenta creada! Bienvenido, ${user.name.split(' ')[0]}.`);
-      // Si venía de intentar pagar el carrito, se reabre al volver.
-      if (location.state?.reopenCart) openCart();
-      navigate(location.state?.from?.pathname ?? '/', { replace: true });
+      const result = await resendVerification(form.email.trim().toLowerCase());
+      setSentInfo({ mailSent: Boolean(result.mailSent), devVerifyUrl: result.devVerifyUrl ?? null });
+      toast.info('Te reenviamos el correo de verificación.');
     } catch {
-      toast.error('No se pudo crear la cuenta. Inténtalo de nuevo.');
+      toast.error('No se pudo reenviar el correo. Inténtalo de nuevo.');
+    } finally {
       setSubmitting(false);
     }
   }
@@ -118,12 +108,12 @@ export default function Register() {
         <div className="flex flex-col items-center gap-2 text-center">
           <img src={logoFull} alt="AUTOCELLS" className="h-20 w-auto" />
           <h1 className="mt-2 text-2xl font-bold text-secondary">
-            {step === 'data' ? 'Crear cuenta' : 'Verifica tu correo'}
+            {step === 'data' ? 'Crear cuenta' : 'Revisa tu correo'}
           </h1>
           <p className="text-sm text-muted">
             {step === 'data'
               ? 'Regístrate para hacer pedidos y dar seguimiento a tus compras.'
-              : `Escribe el código que enviamos a ${form.email.trim().toLowerCase()}.`}
+              : `Te enviamos un enlace de verificación a ${form.email.trim().toLowerCase()}.`}
           </p>
         </div>
 
@@ -131,15 +121,16 @@ export default function Register() {
           <form onSubmit={handleSubmit} noValidate className="mt-6 flex flex-col gap-4">
             {error && <Alert variant="error">{error}</Alert>}
             <FormField
-              label="Nombre"
+              label="Nombre completo"
               id="name"
               name="name"
               type="text"
               autoComplete="name"
+              maxLength={LIMITS.name.max}
               error={fieldErrors.name}
               value={form.name}
               onChange={handleChange}
-              placeholder="Tu nombre"
+              placeholder="Nombre y apellido"
             />
             <FormField
               label="Correo"
@@ -147,6 +138,7 @@ export default function Register() {
               name="email"
               type="email"
               autoComplete="email"
+              maxLength={LIMITS.email.max}
               error={fieldErrors.email}
               value={form.email}
               onChange={handleChange}
@@ -158,6 +150,7 @@ export default function Register() {
               name="phone"
               type="tel"
               autoComplete="tel"
+              maxLength={14}
               error={fieldErrors.phone}
               value={form.phone}
               onChange={handleChange}
@@ -169,10 +162,11 @@ export default function Register() {
               name="password"
               type="password"
               autoComplete="new-password"
+              maxLength={LIMITS.password.max}
               error={fieldErrors.password}
               value={form.password}
               onChange={handleChange}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mínimo 6 caracteres, letras y números"
             />
             <FormField
               label="Confirmar contraseña"
@@ -180,6 +174,7 @@ export default function Register() {
               name="confirm"
               type="password"
               autoComplete="new-password"
+              maxLength={LIMITS.password.max}
               error={fieldErrors.confirm}
               value={form.confirm}
               onChange={handleChange}
@@ -194,7 +189,7 @@ export default function Register() {
               {submitting ? (
                 <>
                   <LoaderCircle className="h-4 w-4 animate-spin" />
-                  Verificando…
+                  Creando cuenta…
                 </>
               ) : (
                 <>
@@ -216,53 +211,58 @@ export default function Register() {
             </p>
           </form>
         ) : (
-          <form onSubmit={handleVerify} noValidate className="mt-6 flex flex-col gap-4">
-            {/* Simulación del correo: sin backend, el código se muestra aquí
-                mismo. Con backend real este recuadro desaparece. */}
-            <div className="rounded-card border border-primary-dark/20 bg-primary/5 p-4 text-center">
-              <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary-dark">
-                <Mail className="h-4 w-4" />
-                Correo simulado (demo sin backend)
+          <div className="mt-6 flex flex-col gap-4">
+            <div className="flex flex-col items-center gap-3 rounded-card border border-secondary/10 bg-bg-alt p-6 text-center">
+              <MailCheck className="h-10 w-10 text-primary-dark" strokeWidth={1.5} />
+              <p className="text-sm text-secondary">
+                Tu cuenta quedó <strong>pendiente de verificar</strong>. Abre el enlace del correo
+                para activarla; vence en 24 horas.
               </p>
-              <p className="mt-2 text-sm text-secondary">Tu código de verificación es:</p>
-              <p className="mt-1 text-3xl font-bold tracking-[0.3em] text-secondary">
-                {expectedCode}
+              <p className="text-xs text-muted">
+                Hasta que verifiques tu correo no podrás realizar compras.
               </p>
             </div>
 
-            <FormField
-              label="Código de verificación"
-              id="code"
-              name="code"
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              error={codeError}
-              value={codeInput}
-              onChange={(event) => {
-                setCodeInput(event.target.value);
-                setCodeError('');
-              }}
-              placeholder="000000"
-            />
+            {sentInfo.devVerifyUrl && (
+              /* Sin SMTP configurado (dev), el server regresa el enlace para
+                 probarlo aquí mismo. Con SMTP real este recuadro no aparece. */
+              <div className="rounded-card border border-primary-dark/20 bg-primary/5 p-4 text-center">
+                <p className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary-dark">
+                  <Mail className="h-4 w-4" />
+                  Correo simulado (SMTP sin configurar)
+                </p>
+                <a
+                  href={sentInfo.devVerifyUrl}
+                  className="mt-2 inline-block break-all text-sm font-semibold text-primary-dark hover:underline"
+                >
+                  Abrir enlace de verificación
+                </a>
+              </div>
+            )}
+
+            {!sentInfo.mailSent && !sentInfo.devVerifyUrl && (
+              <Alert variant="error">
+                No pudimos enviar el correo. Usa «Reenviar correo» para intentarlo de nuevo.
+              </Alert>
+            )}
 
             <button
-              type="submit"
+              type="button"
+              onClick={handleResend}
               disabled={submitting}
-              className="mt-2 flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
+              className="flex items-center justify-center gap-2 rounded-card border border-secondary/20 px-6 py-3 text-sm font-semibold text-secondary transition-colors enabled:hover:border-primary-dark enabled:hover:text-primary-dark disabled:opacity-70"
             >
-              {submitting ? (
-                <>
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                  Creando cuenta…
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="h-4 w-4" />
-                  Confirmar cuenta
-                </>
-              )}
+              {submitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+              Reenviar correo
             </button>
+
+            <Link
+              to="/login"
+              state={location.state}
+              className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+            >
+              Ir a iniciar sesión
+            </Link>
 
             <button
               type="button"
@@ -270,9 +270,9 @@ export default function Register() {
               className="flex items-center justify-center gap-1 text-sm font-medium text-muted transition-colors hover:text-primary-dark"
             >
               <ArrowLeft className="h-4 w-4" />
-              Corregir mis datos
+              Volver al formulario
             </button>
-          </form>
+          </div>
         )}
       </div>
     </div>

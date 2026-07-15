@@ -30,5 +30,9 @@ dist-ssr
 skills-lock.json
 CLAUDE.md
 
-# Base de datos local (cada entorno genera la suya)
-server/*.db
+# Base de datos local (cada entorno genera la suya), incluidos los
+# archivos -shm/-wal del modo WAL
+server/*.db*
+
+# Guía de despliegue con datos del servidor (IP, usuario SSH): no publicar
+DEPLOY.md

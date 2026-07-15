@@ -7,7 +7,8 @@ import { priceFormatter } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { isAuthenticated, getCurrentUser } from '../routes/auth';
-import { EMAIL_PATTERN, PHONE_PATTERN, findUserByEmail } from '../data/users';
+import { findUserByEmail, resendVerification } from '../data/users';
+import { LIMITS, validatePersonName, validateEmail, validatePhone } from '../lib/validation';
 import { addWebOrder } from '../data/orders';
 import { STORE_ADDRESS, STORE_HOURS } from '../data/store';
 
@@ -28,11 +29,17 @@ export default function Checkout() {
     };
   });
 
+  // Solo cuentas verificadas pueden comprar (el server también lo exige).
+  // El admin demo no existe en la base: se trata como no verificado.
+  const [verified, setVerified] = useState(true);
+  const [resending, setResending] = useState(false);
+
   useEffect(() => {
     const user = getCurrentUser();
     if (!user) return;
     findUserByEmail(user.email)
       .then((account) => {
+        setVerified(Boolean(account?.verified));
         if (account?.phone) {
           setForm((prev) => (prev.phone ? prev : { ...prev, phone: account.phone }));
         }
@@ -126,14 +133,14 @@ export default function Checkout() {
     event.preventDefault();
     if (submitting) return;
 
+    // Reglas compartidas con el server (lib/validation.js).
     const errors = {};
-    if (!form.name.trim()) errors.name = 'Ingresa tu nombre.';
-    if (!PHONE_PATTERN.test(form.phone.replace(/\D/g, ''))) {
-      errors.phone = 'Ingresa un teléfono a 10 dígitos, sin espacios ni guiones.';
-    }
-    if (!EMAIL_PATTERN.test(form.email.trim().toLowerCase())) {
-      errors.email = 'Ingresa un correo válido (ej. tu@correo.com).';
-    }
+    const nameError = validatePersonName(form.name);
+    if (nameError) errors.name = nameError;
+    const phoneError = validatePhone(form.phone);
+    if (phoneError) errors.phone = phoneError;
+    const emailError = validateEmail(form.email);
+    if (emailError) errors.email = emailError;
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -169,10 +176,30 @@ export default function Checkout() {
       setOrder(newOrder);
       clearCart();
       toast.success(`¡Pedido registrado! Tu folio es ${newOrder.id}.`);
-    } catch {
-      toast.error('No se pudo registrar el pedido. Inténtalo de nuevo.');
+    } catch (requestError) {
+      // 403 = cuenta sin verificar (el server es la autoridad, por si esta
+      // pantalla se cargó antes de verificar en otra pestaña).
+      if (requestError.status === 403) {
+        setVerified(false);
+        setFormError(requestError.message);
+      } else {
+        toast.error('No se pudo registrar el pedido. Inténtalo de nuevo.');
+      }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    if (resending) return;
+    setResending(true);
+    try {
+      await resendVerification(form.email.trim().toLowerCase());
+      toast.info('Te enviamos el correo de verificación. Revisa tu bandeja de entrada.');
+    } catch {
+      toast.error('No se pudo enviar el correo. Inténtalo de nuevo.');
+    } finally {
+      setResending(false);
     }
   }
 
@@ -191,18 +218,32 @@ export default function Checkout() {
           className="flex flex-col gap-4 rounded-card border border-secondary/10 bg-white p-6"
         >
           <h2 className="text-xl font-bold text-secondary">Tus datos</h2>
+          {!verified && (
+            <Alert variant="error">
+              Tu cuenta aún no está verificada: confirma tu correo para poder comprar.{' '}
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resending}
+                className="font-semibold underline disabled:opacity-70"
+              >
+                {resending ? 'Enviando…' : 'Reenviar correo de verificación'}
+              </button>
+            </Alert>
+          )}
           {formError && <Alert variant="error">{formError}</Alert>}
 
           <FormField
-            label="Nombre"
+            label="Nombre completo"
             id="name"
             name="name"
             type="text"
             autoComplete="name"
+            maxLength={LIMITS.name.max}
             error={fieldErrors.name}
             value={form.name}
             onChange={handleChange}
-            placeholder="Tu nombre"
+            placeholder="Nombre y apellido"
           />
           <FormField
             label="Teléfono"
@@ -210,6 +251,7 @@ export default function Checkout() {
             name="phone"
             type="tel"
             autoComplete="tel"
+            maxLength={14}
             error={fieldErrors.phone}
             value={form.phone}
             onChange={handleChange}
@@ -221,6 +263,7 @@ export default function Checkout() {
             name="email"
             type="email"
             autoComplete="email"
+            maxLength={LIMITS.email.max}
             error={fieldErrors.email}
             value={form.email}
             onChange={handleChange}
@@ -240,7 +283,7 @@ export default function Checkout() {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !verified}
             className="mt-2 flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
           >
             {submitting ? (
@@ -251,7 +294,7 @@ export default function Checkout() {
             ) : (
               <>
                 <ShoppingBag className="h-4 w-4" />
-                Realizar compra
+                {verified ? 'Realizar compra' : 'Verifica tu correo para comprar'}
               </>
             )}
           </button>
