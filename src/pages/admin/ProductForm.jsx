@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Save, FileSearch, Smartphone, Shield, BatteryCharging, Cable, Sparkles } from 'lucide-react';
+import { Save, FileSearch, Smartphone, Shield, BatteryCharging, Cable, Sparkles, ImageIcon } from 'lucide-react';
 import FormField from '../../components/FormField';
 import Alert from '../../components/Alert';
 import Modal from '../../components/Modal';
@@ -681,6 +681,11 @@ export default function ProductForm() {
               onChange={handlePhotosChange}
               className="block w-full text-sm text-secondary file:mr-3 file:rounded-card file:border-0 file:bg-primary-dark file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white file:transition-colors hover:file:bg-primary-hover"
             />
+            <p className="mt-1.5 flex items-start gap-1.5 text-xs text-muted">
+              <ImageIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              Sube fotos cuadradas de al menos 800×800 px para que se vean nítidas. Las imágenes
+              más pequeñas se verán borrosas al ampliarse en la ficha del producto.
+            </p>
             {fieldErrors.photos && (
               <p className="mt-1.5 text-xs font-medium text-danger-dark">{fieldErrors.photos}</p>
             )}
