@@ -164,6 +164,9 @@ export default function Checkout() {
         email: form.email.trim().toLowerCase(),
         products: productsSummary,
         items: items.map((line) => ({
+          // El id es el que descuenta inventario en el server (los productos
+          // del catálogo estático no están en la base y no llevan stock).
+          id: line.id,
           name: line.product.name,
           qty: line.qty,
           storage: line.storage,
@@ -182,6 +185,11 @@ export default function Checkout() {
       if (requestError.status === 403) {
         setVerified(false);
         setFormError(requestError.message);
+      } else if (requestError.status === 409 || requestError.status === 400) {
+        // 409 = inventario insuficiente (alguien compró antes): el mensaje
+        // del server dice qué producto y cuántas piezas quedan.
+        setFormError(requestError.message);
+        toast.error('Hay productos sin inventario suficiente. Ajusta tu carrito.');
       } else {
         toast.error('No se pudo registrar el pedido. Inténtalo de nuevo.');
       }

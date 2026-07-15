@@ -158,7 +158,12 @@ export default function CartDrawer() {
                             type="button"
                             aria-label="Agregar uno"
                             onClick={() => setQty(line.key, line.qty + 1)}
-                            className="p-1.5 text-secondary transition-colors hover:text-primary-dark"
+                            disabled={
+                              // Tope al inventario real (productos del admin);
+                              // el server revalida al crear el pedido.
+                              line.product.stockCount != null && line.qty >= line.product.stockCount
+                            }
+                            className="p-1.5 text-secondary transition-colors enabled:hover:text-primary-dark disabled:opacity-30"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>

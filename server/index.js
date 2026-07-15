@@ -530,6 +530,13 @@ api.post('/pedidos', requireAuth, (req, res) => {
     });
   }
 
+  const lines = Array.isArray(items) ? items : [];
+  for (const line of lines) {
+    if (!Number.isInteger(line?.qty) || line.qty < 1 || line.qty > 999) {
+      return res.status(400).json({ error: 'Las cantidades del pedido no son válidas.' });
+    }
+  }
+
   const order = {
     id: generateFolio(),
     customer: customer.trim(),
@@ -538,34 +545,82 @@ api.post('/pedidos', requireAuth, (req, res) => {
     // nadie puede levantar pedidos a nombre de otra cuenta.
     email: req.user.email,
     products,
-    items: JSON.stringify(items ?? []),
+    items: JSON.stringify(lines),
     total,
     status: 'pendiente',
     date: todayKey(),
   };
-  // El folio lleva un sufijo aleatorio corto (legible para dictar en tienda),
-  // así que dos pedidos del mismo día pueden chocar: se reintenta con un folio
-  // nuevo en vez de regresarle un 500 al cliente.
-  for (let attempt = 0; ; attempt += 1) {
-    try {
-      db.prepare(
-        'INSERT INTO orders (id, customer, phone, email, products, items, total, status, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      ).run(order.id, order.customer, order.phone, order.email, order.products, order.items, order.total, order.status, order.date);
-      break;
-    } catch (error) {
-      if (!isUniqueViolation(error) || attempt >= 4) throw error;
-      order.id = generateFolio();
+
+  // Piezas requeridas por producto (un mismo producto puede venir en varios
+  // renglones). Solo descuentan stock los productos que existen en la base;
+  // los del catálogo estático no llevan inventario.
+  const needed = orderStockByProduct(lines);
+
+  // Stock y pedido en la MISMA transacción: dos compradores del último
+  // iPhone no pueden ganar ambos — BEGIN IMMEDIATE serializa las escrituras
+  // y el que llega después ya ve el stock descontado.
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const shortages = [];
+    for (const [id, qty] of needed) {
+      const row = db.prepare('SELECT name, stock FROM products WHERE id = ?').get(id);
+      if (!row) continue;
+      if (row.stock < qty) {
+        shortages.push(row.stock === 0 ? `"${row.name}" se agotó` : `de "${row.name}" solo quedan ${row.stock}`);
+      }
     }
+    if (shortages.length > 0) {
+      db.exec('ROLLBACK');
+      return res.status(409).json({
+        error: `No hay inventario suficiente: ${shortages.join('; ')}. Ajusta tu carrito e inténtalo de nuevo.`,
+        outOfStock: true,
+      });
+    }
+    for (const [id, qty] of needed) {
+      db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(qty, id);
+    }
+    // El folio lleva un sufijo aleatorio corto (legible para dictar en
+    // tienda), así que dos pedidos del mismo día pueden chocar: se reintenta
+    // con un folio nuevo en vez de regresarle un 500 al cliente. El INSERT
+    // fallido no aborta la transacción (SQLite invalida solo el statement).
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        db.prepare(
+          'INSERT INTO orders (id, customer, phone, email, products, items, total, status, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        ).run(order.id, order.customer, order.phone, order.email, order.products, order.items, order.total, order.status, order.date);
+        break;
+      } catch (error) {
+        if (!isUniqueViolation(error) || attempt >= 4) throw error;
+        order.id = generateFolio();
+      }
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
   }
   res.status(201).json(publicOrder(order));
 });
+
+// Suma las piezas por producto de los renglones de un pedido. Solo cuentan
+// los renglones con id (los pedidos de antes del control de inventario no lo
+// guardaban) y qty válida.
+function orderStockByProduct(lines) {
+  const needed = new Map();
+  for (const line of lines) {
+    if (line?.id && Number.isInteger(line.qty) && line.qty > 0) {
+      needed.set(line.id, (needed.get(line.id) ?? 0) + line.qty);
+    }
+  }
+  return needed;
+}
 
 api.put('/pedidos/:id/estado', requireAuth, (req, res) => {
   const { status } = req.body ?? {};
   if (!['pendiente', 'entregado-vendido', 'cancelado'].includes(status)) {
     return res.status(400).json({ error: 'Estado inválido' });
   }
-  const order = db.prepare('SELECT email, status FROM orders WHERE id = ?').get(req.params.id);
+  const order = db.prepare('SELECT email, status, items FROM orders WHERE id = ?').get(req.params.id);
   if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
   // El admin mueve cualquier estado; un cliente solo puede cancelar SU pedido
   // y solo mientras siga pendiente (uno entregado ya no se "des-vende").
@@ -576,7 +631,48 @@ api.put('/pedidos/:id/estado', requireAuth, (req, res) => {
       return res.status(403).json({ error: 'No tienes permiso para cambiar este pedido.' });
     }
   }
-  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
+
+  // Inventario según la transición: ENTRAR a 'cancelado' regresa las piezas
+  // al stock; SALIR de 'cancelado' (el admin reactiva un pedido) las vuelve a
+  // apartar, y se rechaza si ya no alcanzan. Entre pendiente y entregado no
+  // hay movimiento: las piezas se apartaron al crear el pedido.
+  const needed = orderStockByProduct(JSON.parse(order.items ?? '[]'));
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    // El estado se relee DENTRO de la transacción: dos cambios simultáneos
+    // sobre el mismo pedido no deben mover el inventario dos veces.
+    const current = db.prepare('SELECT status FROM orders WHERE id = ?').get(req.params.id).status;
+    const entering = status === 'cancelado' && current !== 'cancelado';
+    const leaving = current === 'cancelado' && status !== 'cancelado';
+
+    if (leaving) {
+      const shortages = [];
+      for (const [id, qty] of needed) {
+        const row = db.prepare('SELECT name, stock FROM products WHERE id = ?').get(id);
+        if (row && row.stock < qty) shortages.push(`"${row.name}"`);
+      }
+      if (shortages.length > 0) {
+        db.exec('ROLLBACK');
+        return res.status(409).json({
+          error: `No hay inventario para reactivar el pedido (${shortages.join(', ')} sin piezas suficientes).`,
+        });
+      }
+      for (const [id, qty] of needed) {
+        db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?').run(qty, id);
+      }
+    }
+    if (entering) {
+      for (const [id, qty] of needed) {
+        db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(qty, id);
+      }
+    }
+    db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
   res.json({ ok: true });
 });
 

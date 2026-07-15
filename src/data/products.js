@@ -71,6 +71,10 @@ function normalizeAdminProduct(product) {
       ? [...(product.compatibleModels ?? []), product.customCompatibleModel]
       : product.compatibleModels,
     stock: product.stock > 0 ? 'disponible' : 'agotado',
+    // El número real de piezas, para topar cantidades en el carrito. Los
+    // productos estáticos no lo tienen (undefined = sin tope en la UI; el
+    // server igual valida el inventario al crear el pedido).
+    stockCount: product.stock,
   };
 }
 
