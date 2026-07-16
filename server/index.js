@@ -527,6 +527,58 @@ api.delete('/productos/:id', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// Venta de mostrador: el admin marca "vendido" una pieza que un cliente compró
+// en el local físico (sin pasar por el sitio). Baja 1 del stock y registra la
+// venta como un pedido ya entregado-vendido, así el dashboard la cuenta en las
+// ventas del mes igual que una compra web. Todo en una transacción para no
+// vender por debajo del stock si dos ventas coinciden.
+api.post('/productos/:id/vender', requireAdmin, (req, res) => {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const product = db.prepare('SELECT name, price, stock FROM products WHERE id = ?').get(req.params.id);
+    if (!product) {
+      db.exec('ROLLBACK');
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+    if (product.stock < 1) {
+      db.exec('ROLLBACK');
+      return res.status(409).json({ error: 'Este producto está agotado.' });
+    }
+    db.prepare('UPDATE products SET stock = stock - 1 WHERE id = ?').run(req.params.id);
+
+    const order = {
+      id: generateFolio(),
+      customer: 'Venta en tienda',
+      phone: '',
+      email: '',
+      products: `1× ${product.name}`,
+      // El id va en items para que cancelar esta venta devuelva la pieza al
+      // stock (misma lógica que los pedidos web).
+      items: JSON.stringify([{ id: req.params.id, name: product.name, qty: 1 }]),
+      total: product.price,
+      status: 'entregado-vendido',
+      date: todayKey(),
+    };
+    // El folio puede chocar (sufijo aleatorio): se reintenta con otro.
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        db.prepare(
+          'INSERT INTO orders (id, customer, phone, email, products, items, total, status, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        ).run(order.id, order.customer, order.phone, order.email, order.products, order.items, order.total, order.status, order.date);
+        break;
+      } catch (error) {
+        if (!isUniqueViolation(error) || attempt >= 4) throw error;
+        order.id = generateFolio();
+      }
+    }
+    db.exec('COMMIT');
+    res.status(201).json({ ok: true, order: publicOrder(order), stock: product.stock - 1 });
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+});
+
 // ---------- Pedidos ----------
 
 function publicOrder(row) {

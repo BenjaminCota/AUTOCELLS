@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Smartphone, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, Smartphone, Star, HandCoins } from 'lucide-react';
 import AdminTable from '../../components/AdminTable';
 import Badge from '../../components/Badge';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { categoryIcons, priceFormatter } from '../../components/ProductCard';
 import { useToast } from '../../context/ToastContext';
-import { getAdminProducts, deleteAdminProduct, setAdminProductFeatured } from '../../data/adminProducts';
+import { getAdminProducts, deleteAdminProduct, setAdminProductFeatured, sellAdminProduct } from '../../data/adminProducts';
 
 // Mismo orden que regresa el API: el destacado anclado arriba, luego por fecha.
 // Se replica aquí para reacomodar la lista al destacar sin volver a pedirla.
@@ -21,6 +21,8 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [pendingSale, setPendingSale] = useState(null);
+  const [selling, setSelling] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -61,6 +63,25 @@ export default function Products() {
       toast.success(`${target.name} se eliminó del catálogo.`);
     } catch {
       toast.error(`No se pudo eliminar ${target.name}. Inténtalo de nuevo.`);
+    }
+  }
+
+  // Venta de mostrador: baja 1 del stock y registra la venta (el server la
+  // deja como pedido entregado-vendido, así el dashboard la suma).
+  async function confirmSale() {
+    if (selling) return;
+    const target = pendingSale;
+    setSelling(true);
+    try {
+      const { stock } = await sellAdminProduct(target.id);
+      setProducts((prev) => prev.map((product) => (product.id === target.id ? { ...product, stock } : product)));
+      toast.success(`Venta registrada: ${target.name}. Quedan ${stock} en stock.`);
+      setPendingSale(null);
+    } catch (error) {
+      toast.error(error.status === 409 ? error.message : 'No se pudo registrar la venta. Inténtalo de nuevo.');
+      setPendingSale(null);
+    } finally {
+      setSelling(false);
     }
   }
 
@@ -141,6 +162,16 @@ export default function Products() {
                   >
                     <Star className={`h-4 w-4 ${product.featured ? 'fill-current' : ''}`} />
                   </button>
+                  <button
+                    type="button"
+                    aria-label={`Registrar venta de ${product.name}`}
+                    title={product.stock === 0 ? 'Sin stock' : 'Registrar venta en tienda (baja 1 del stock)'}
+                    onClick={() => setPendingSale(product)}
+                    disabled={product.stock === 0}
+                    className="text-secondary/60 transition-colors enabled:hover:text-success-dark disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <HandCoins className="h-4 w-4" />
+                  </button>
                   <Link
                     to={`/admin/productos/${product.id}/editar`}
                     aria-label={`Editar ${product.name}`}
@@ -174,6 +205,21 @@ export default function Products() {
           <p>
             ¿Eliminar <span className="font-semibold">{pendingDelete.name}</span>? Esta acción no se
             puede deshacer.
+          </p>
+        </ConfirmDialog>
+      )}
+
+      {pendingSale && (
+        <ConfirmDialog
+          title="Registrar venta en tienda"
+          confirmLabel={selling ? 'Registrando…' : 'Registrar venta'}
+          onConfirm={confirmSale}
+          onCancel={() => (selling ? null : setPendingSale(null))}
+        >
+          <p>
+            ¿Registrar la venta de <span className="font-semibold">{pendingSale.name}</span> por{' '}
+            {priceFormatter.format(pendingSale.price)}? Bajará 1 del stock (quedarán{' '}
+            {pendingSale.stock - 1}) y se sumará a las ventas del mes.
           </p>
         </ConfirmDialog>
       )}

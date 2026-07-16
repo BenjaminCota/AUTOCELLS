@@ -61,3 +61,20 @@ export async function deleteAdminProduct(id) {
   if (!response.ok) throw new Error('No se pudo eliminar el producto');
   return true;
 }
+
+// Venta de mostrador: baja 1 del stock y registra la venta (el server crea un
+// pedido entregado-vendido para que el dashboard la cuente). Regresa el stock
+// nuevo. Lanza Error con status (409 = agotado) para avisar en la UI.
+export async function sellAdminProduct(id) {
+  const response = await fetch(apiUrl(`productos/${encodeURIComponent(id)}/vender`), {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.error ?? 'No se pudo registrar la venta');
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
