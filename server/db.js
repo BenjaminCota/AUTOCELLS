@@ -103,7 +103,10 @@ db.exec(`
     device         TEXT NOT NULL DEFAULT '',
     date           TEXT NOT NULL,
     time           TEXT NOT NULL,
-    description    TEXT NOT NULL DEFAULT ''
+    description    TEXT NOT NULL DEFAULT '',
+    -- 'pendiente' (default) | 'realizada' | 'cancelada'. El admin lo cambia
+    -- desde el panel; una cita cancelada libera su horario (índice parcial).
+    status         TEXT NOT NULL DEFAULT 'pendiente'
   );
 
   CREATE TABLE IF NOT EXISTS products (
@@ -154,6 +157,15 @@ for (const alter of [
   }
 }
 
+// Estado de las citas (misma migración ligera): las citas anteriores a este
+// cambio quedan 'pendiente'. Debe correr antes del índice parcial de abajo,
+// que referencia esta columna.
+try {
+  db.exec("ALTER TABLE appointments ADD COLUMN status TEXT NOT NULL DEFAULT 'pendiente'");
+} catch {
+  // La columna ya existe.
+}
+
 db.exec('CREATE INDEX IF NOT EXISTS idx_users_verify_token ON users (verify_token)');
 // Cerrar las sesiones de una cuenta (cambio de contraseña) busca por email.
 db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_email ON sessions (email)');
@@ -173,10 +185,14 @@ db.exec(`
 
 // La unicidad del horario de citas la garantiza la base, no el "SELECT antes
 // de INSERT" del endpoint (dos peticiones simultáneas pasan ambas ese check —
-// sobre todo con varios workers). En try/catch por si una base vieja ya
+// sobre todo con varios workers). Es un índice PARCIAL: solo las citas no
+// canceladas ocupan el slot, así una cita cancelada libera su horario para
+// que otro cliente lo pueda tomar. Se recrea (drop + create) para reemplazar
+// el índice total de bases anteriores. En try/catch por si una base vieja ya
 // tuviera un slot duplicado: el índice no se puede crear pero la app funciona.
 try {
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_appointments_slot ON appointments (date, time)');
+  db.exec('DROP INDEX IF EXISTS idx_appointments_slot');
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_appointments_slot ON appointments (date, time) WHERE status <> 'cancelada'");
 } catch {
   // Datos legados con duplicados: se queda solo la validación del endpoint.
 }

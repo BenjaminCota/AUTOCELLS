@@ -51,6 +51,26 @@ export async function addAppointment(data) {
   return response.json();
 }
 
+// Estados de una cita: 'pendiente' (default), 'realizada' (concluida) y
+// 'cancelada' (libera el horario). El admin los cambia desde el panel.
+export const appointmentStatuses = ['pendiente', 'realizada', 'cancelada'];
+
+// Cambia el estado de una cita (solo admin; el server valida el rol).
+export async function updateAppointmentStatus(id, status) {
+  const response = await fetch(apiUrl(`citas/${encodeURIComponent(id)}/estado`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const error = new Error(body.error ?? 'No se pudo actualizar la cita');
+    error.status = response.status;
+    throw error;
+  }
+  return true;
+}
+
 // Slots de 30 minutos (la liberación por R-SIM es rápida) dentro de los
 // bloques del día, marcando los no disponibles: ya reservados en la base, o
 // ya pasados si la fecha es hoy.

@@ -6,6 +6,9 @@ const variants = {
   pendiente: 'bg-primary/10 text-primary-dark',
   'entregado-vendido': 'bg-success/10 text-success-dark',
   cancelado: 'bg-danger/10 text-danger-dark',
+  // Estados de cita: realizada (concluida) y cancelada.
+  realizada: 'bg-success/10 text-success-dark',
+  cancelada: 'bg-danger/10 text-danger-dark',
 };
 
 export default function Badge({ variant = 'nuevo', children }) {

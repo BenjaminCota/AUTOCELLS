@@ -742,6 +742,7 @@ function publicAppointment(row) {
     date: row.date,
     time: row.time,
     description: row.description,
+    status: row.status ?? 'pendiente',
   };
 }
 
@@ -750,8 +751,11 @@ api.get('/citas', (req, res) => {
   // Consulta pública por fecha: la página de Servicios solo necesita QUÉ
   // horarios están ocupados para pintar el calendario — nunca los datos de
   // los clientes (antes esta ruta regresaba nombre/teléfono/correo de todos).
+  // Las canceladas no cuentan: su horario vuelve a estar disponible.
   if (date) {
-    const rows = db.prepare('SELECT time FROM appointments WHERE date = ? ORDER BY time').all(String(date));
+    const rows = db
+      .prepare("SELECT time FROM appointments WHERE date = ? AND status <> 'cancelada' ORDER BY time")
+      .all(String(date));
     return res.json(rows.map((row) => ({ time: row.time })));
   }
 
@@ -798,8 +802,11 @@ api.post('/citas', requireAuth, (req, res) => {
   if (invalid) return res.status(400).json({ error: invalid });
 
   // El horario se valida también aquí: dos clientes podrían elegir el mismo
-  // slot al mismo tiempo y solo el primero debe ganarlo.
-  const taken = db.prepare('SELECT 1 FROM appointments WHERE date = ? AND time = ?').get(date, time);
+  // slot al mismo tiempo y solo el primero debe ganarlo. Las canceladas no
+  // ocupan: su horario se puede volver a tomar.
+  const taken = db
+    .prepare("SELECT 1 FROM appointments WHERE date = ? AND time = ? AND status <> 'cancelada'")
+    .get(date, time);
   if (taken) return res.status(409).json({ error: 'Ese horario acaba de ocuparse' });
 
   const appointment = {
@@ -843,7 +850,28 @@ api.post('/citas', requireAuth, (req, res) => {
   // Solo las citas que sí se crearon consumen el límite (un 409 por horario
   // ocupado no debe castigar al cliente que reintenta con otro horario).
   record(appointmentBucket);
-  res.status(201).json(publicAppointment(appointment));
+  res.status(201).json(publicAppointment({ ...appointment, status: 'pendiente' }));
+});
+
+// El admin cambia el estado de una cita (pendiente → realizada al concluir, o
+// cancelada). Cancelar libera el horario (ver índice parcial en db.js).
+api.put('/citas/:id/estado', requireAdmin, (req, res) => {
+  const { status } = req.body ?? {};
+  if (!['pendiente', 'realizada', 'cancelada'].includes(status)) {
+    return res.status(400).json({ error: 'Estado inválido' });
+  }
+  try {
+    const result = db.prepare('UPDATE appointments SET status = ? WHERE id = ?').run(status, req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Cita no encontrada' });
+  } catch (error) {
+    // Reactivar una cita cancelada cuyo horario ya tomó otra cita choca con el
+    // índice parcial (date, time) de las no canceladas.
+    if (isUniqueViolation(error)) {
+      return res.status(409).json({ error: 'Ese horario ya está ocupado por otra cita.' });
+    }
+    throw error;
+  }
+  res.json({ ok: true });
 });
 
 // ---------- Servicios ----------

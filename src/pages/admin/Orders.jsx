@@ -5,7 +5,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import { priceFormatter } from '../../components/ProductCard';
 import { useToast } from '../../context/ToastContext';
 import { orderStatuses, getWebOrders, updateWebOrderStatus } from '../../data/orders';
-import { getAppointments } from '../../data/appointments';
+import { appointmentStatuses, getAppointments, updateAppointmentStatus } from '../../data/appointments';
 
 export default function Orders() {
   const toast = useToast();
@@ -13,6 +13,7 @@ export default function Orders() {
   const [pendingCancel, setPendingCancel] = useState(null);
   // Incluye las citas que los clientes agendan desde la página de Servicios.
   const [appointments, setAppointments] = useState([]);
+  const [pendingCancelAppointment, setPendingCancelAppointment] = useState(null);
 
   // Pedidos (folios de /comprar + demo) y citas vienen de la base de datos.
   useEffect(() => {
@@ -55,6 +56,29 @@ export default function Orders() {
       return;
     }
     applyStatus(orderId, status);
+  }
+
+  async function applyAppointmentStatus(appointmentId, status) {
+    try {
+      await updateAppointmentStatus(appointmentId, status);
+      setAppointments((prev) =>
+        prev.map((appointment) => (appointment.id === appointmentId ? { ...appointment, status } : appointment)),
+      );
+      if (status === 'realizada') toast.success('Cita marcada como realizada.');
+      else if (status === 'cancelada') toast.info('Cita cancelada; su horario vuelve a estar disponible.');
+      else toast.info('Cita marcada como pendiente.');
+    } catch (error) {
+      // 409 = reactivar una cita cuyo horario ya tomó otra.
+      toast.error(error.status === 409 ? error.message : 'No se pudo actualizar la cita. Inténtalo de nuevo.');
+    }
+  }
+
+  function handleAppointmentStatusChange(appointmentId, status) {
+    if (status === 'cancelada') {
+      setPendingCancelAppointment(appointments.find((appointment) => appointment.id === appointmentId));
+      return;
+    }
+    applyAppointmentStatus(appointmentId, status);
   }
 
   return (
@@ -105,7 +129,7 @@ export default function Orders() {
         <h2 className="text-lg font-semibold text-secondary">Servicios programados</h2>
         <p className="mt-1 text-sm text-muted">Listado de citas y solicitudes de servicio con el nombre de la persona que lo agendó.</p>
         <div className="mt-4 overflow-x-auto">
-          <AdminTable headers={['Cliente', 'Teléfono', 'Servicio', 'Fecha', 'Hora', 'Costo', 'Detalle']} emptyMessage="No hay servicios programados aún.">
+          <AdminTable headers={['Cliente', 'Teléfono', 'Servicio', 'Fecha', 'Hora', 'Costo', 'Estado']} emptyMessage="No hay servicios programados aún.">
             {appointments.map((appointment) => (
               <tr key={appointment.id}>
                 <td className="px-4 py-3 font-medium text-secondary">{appointment.customerName}</td>
@@ -114,7 +138,26 @@ export default function Orders() {
                 <td className="px-4 py-3 text-secondary">{appointment.date}</td>
                 <td className="px-4 py-3 text-secondary">{appointment.time}</td>
                 <td className="px-4 py-3 text-secondary">{priceFormatter.format(appointment.servicePrice)}</td>
-                <td className="px-4 py-3 max-w-md text-muted">{appointment.description}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={appointment.status}>{appointment.status}</Badge>
+                    <label className="sr-only" htmlFor={`cita-status-${appointment.id}`}>
+                      Cambiar estado de la cita de {appointment.customerName}
+                    </label>
+                    <select
+                      id={`cita-status-${appointment.id}`}
+                      value={appointment.status}
+                      onChange={(event) => handleAppointmentStatusChange(appointment.id, event.target.value)}
+                      className="rounded-card border border-secondary/20 bg-white px-2 py-1 text-xs text-secondary focus:border-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-dark/20"
+                    >
+                      {appointmentStatuses.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </td>
               </tr>
             ))}
           </AdminTable>
@@ -136,6 +179,27 @@ export default function Orders() {
           <p>
             ¿Cancelar el pedido <span className="font-semibold">{pendingCancel.id}</span> de{' '}
             {pendingCancel.customer}? El cliente ya no podrá recogerlo.
+          </p>
+        </ConfirmDialog>
+      )}
+
+      {pendingCancelAppointment && (
+        <ConfirmDialog
+          title="Cancelar cita"
+          confirmLabel="Cancelar cita"
+          cancelLabel="Volver"
+          danger
+          onConfirm={() => {
+            applyAppointmentStatus(pendingCancelAppointment.id, 'cancelada');
+            setPendingCancelAppointment(null);
+          }}
+          onCancel={() => setPendingCancelAppointment(null)}
+        >
+          <p>
+            ¿Cancelar la cita de{' '}
+            <span className="font-semibold">{pendingCancelAppointment.customerName}</span> del{' '}
+            {pendingCancelAppointment.date} a las {pendingCancelAppointment.time}? Su horario
+            volverá a estar disponible.
           </p>
         </ConfirmDialog>
       )}
