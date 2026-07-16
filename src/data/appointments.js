@@ -32,12 +32,14 @@ export async function getAppointments({ date } = {}) {
   return response.json();
 }
 
-// Lanza Error con status adjunto: 409 = horario ocupado, 429 = límite de
-// citas por conexión (el mensaje del server explica cada caso).
+// Lanza Error con status adjunto: 401 = sin sesión (agendar la exige), 409 =
+// horario ocupado, 429 = límite de citas por conexión (el mensaje del server
+// explica cada caso). El token de sesión va en el header (el server toma el
+// correo de la sesión, no del body).
 export async function addAppointment(data) {
   const response = await fetch(apiUrl('citas'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(data),
   });
   if (!response.ok) {

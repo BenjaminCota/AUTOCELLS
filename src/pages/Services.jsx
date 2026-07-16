@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Unlock,
   Smartphone,
@@ -15,7 +15,7 @@ import {
 import { getAdminServices } from '../data/adminServices';
 import { getSlotsForDate, formatDateKey, addAppointment } from '../data/appointments';
 import { LIMITS, validatePersonName, validatePhone, validateDevice } from '../lib/validation';
-import { getCurrentUser } from '../routes/auth';
+import { getCurrentUser, isAuthenticated } from '../routes/auth';
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
@@ -76,6 +76,7 @@ function groupSlots(slots) {
 
 function BookingModal({ services, initialServiceId, onClose }) {
   const toast = useToast();
+  const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   // El servicio arranca en el que se pidió desde su bloque (o el primero); el
   // usuario puede cambiarlo con el selector. El calendario es el mismo para
@@ -177,8 +178,7 @@ function BookingModal({ services, initialServiceId, onClose }) {
       const appointment = await addAppointment({
         customerName: name.trim(),
         customerPhone: phone.replace(/\D/g, ''),
-        // Liga la cita a la cuenta (si hay sesión) para mostrarla en /cuenta.
-        customerEmail: getCurrentUser()?.email ?? '',
+        // El correo lo toma el server de la sesión (no viaja en el body).
         serviceName: service.name,
         servicePrice: service.price,
         device: device.trim(),
@@ -197,6 +197,10 @@ function BookingModal({ services, initialServiceId, onClose }) {
       } else if (error.status === 429) {
         // Límite de citas por conexión (el mensaje del server explica).
         toast.error(error.message);
+      } else if (error.status === 401) {
+        // La sesión expiró entre abrir el modal y confirmar.
+        toast.info('Tu sesión expiró. Inicia sesión para agendar.');
+        navigate('/login', { state: { from: { pathname: '/servicios' } } });
       } else {
         toast.error('No se pudo agendar la cita. Inténtalo de nuevo.');
       }
@@ -452,6 +456,7 @@ function BookingModal({ services, initialServiceId, onClose }) {
 
 export default function Services() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [services, setServices] = useState([]);
   // El primero (R-SIM, el servicio principal) protagoniza el hero; el resto se
   // listan como bloques debajo.
@@ -462,6 +467,13 @@ export default function Services() {
   const [bookingServiceId, setBookingServiceId] = useState(null);
 
   function openBooking(serviceId = null) {
+    // Agendar exige sesión: la cita se liga a una cuenta real (el server la
+    // rechaza sin sesión). Sin login, se manda a iniciar sesión y de vuelta acá.
+    if (!isAuthenticated()) {
+      toast.info('Inicia sesión para agendar una cita.');
+      navigate('/login', { state: { from: { pathname: '/servicios' } } });
+      return;
+    }
     setBookingServiceId(serviceId);
     setBookingOpen(true);
   }

@@ -769,8 +769,11 @@ api.get('/citas', (req, res) => {
   res.json(rows.map(publicAppointment));
 });
 
-api.post('/citas', (req, res) => {
-  const { customerName, customerPhone, customerEmail, serviceName, servicePrice, device, date, time, description } =
+// Solo con sesión: agendar liga la cita a una cuenta real (para verla en
+// "Mi cuenta" y poder avisarle al cliente). El correo sale de la sesión, no
+// del body, así nadie agenda a nombre de otra cuenta.
+api.post('/citas', requireAuth, (req, res) => {
+  const { customerName, customerPhone, serviceName, servicePrice, device, date, time, description } =
     req.body ?? {};
   if (!serviceName || !date || !time) {
     return res.status(400).json({ error: 'Faltan datos de la cita' });
@@ -787,8 +790,6 @@ api.post('/citas', (req, res) => {
   const invalid =
     validatePersonName(customerName) ??
     validatePhone(customerPhone) ??
-    // El correo de la cita es opcional (liga la cita a la cuenta si hay sesión).
-    (customerEmail ? validateEmail(customerEmail) : null) ??
     (device ? validateDevice(device) : null) ??
     validateDescription(description ?? '') ??
     (!/^\d{4}-\d{2}-\d{2}$/.test(String(date)) ? 'La fecha de la cita no es válida.' : null) ??
@@ -805,7 +806,8 @@ api.post('/citas', (req, res) => {
     id: `apt-${Date.now().toString(36)}`,
     customer_name: customerName.trim(),
     customer_phone: String(customerPhone).replace(/\D/g, ''),
-    customer_email: String(customerEmail ?? '').toLowerCase(),
+    // De la sesión (requireAuth), nunca del body.
+    customer_email: req.user.email,
     service_name: serviceName,
     service_price: servicePrice ?? 0,
     device: device ?? '',
