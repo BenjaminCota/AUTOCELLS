@@ -103,12 +103,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categorías: tiles planos (sin badge circular), ícono arriba y una
-          flecha que se desliza al hover. */}
+      {/* Categorías al estilo Apple Store: visual centrado + etiqueta debajo,
+          sin tarjetas ni bordes; los ítems flotan sobre la banda gris. En móvil
+          la fila hace scroll horizontal; en desktop se reparte a lo ancho. */}
       <section className="bg-bg-alt">
         <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-secondary sm:text-3xl">Explora por categoría</h2>
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
+          <h2 className="text-center text-2xl font-bold text-secondary sm:text-3xl">Explora por categoría</h2>
+          <div className="-mx-4 mt-10 flex gap-8 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:overflow-visible sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categoryCards.map((category, index) => {
               const Icon = categoryIcons[category];
               return (
@@ -116,15 +117,13 @@ export default function Home() {
                   key={category}
                   to={`/catalogo?categoria=${encodeURIComponent(category)}`}
                   style={{ animationDelay: `${index * 60}ms` }}
-                  className="group animate-rise-in flex h-full flex-col justify-between gap-8 rounded-card border border-secondary/10 bg-white p-5 transition-[transform,border-color,box-shadow] duration-200 ease-snappy hover:-translate-y-1 hover:border-primary-dark/30 hover:shadow-[0_16px_32px_-18px_rgba(14,116,144,0.4)]"
+                  className="group animate-rise-in flex w-24 shrink-0 flex-col items-center gap-4 rounded-card py-2 sm:w-auto sm:flex-1"
                 >
-                  <Icon
-                    className="h-7 w-7 text-primary-dark transition-transform duration-200 ease-snappy group-hover:scale-110"
-                    strokeWidth={1.75}
-                  />
-                  <span className="flex items-center justify-between gap-2 font-semibold text-secondary">
+                  <span className="flex h-16 items-center justify-center transition-transform duration-200 ease-snappy group-hover:-translate-y-1.5">
+                    <Icon className="h-14 w-14 text-primary-dark" strokeWidth={1.25} />
+                  </span>
+                  <span className="text-center text-sm font-semibold text-secondary transition-colors group-hover:text-primary-dark">
                     {category}
-                    <ArrowRight className="h-4 w-4 -translate-x-1 text-muted opacity-0 transition-all duration-200 ease-snappy group-hover:translate-x-0 group-hover:text-primary-dark group-hover:opacity-100" />
                   </span>
                 </Link>
               );
