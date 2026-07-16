@@ -518,7 +518,7 @@ export default function Services() {
     <div>
       {/* Hero */}
       <section className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:px-8">
           <div>
             <h1 className="text-3xl font-bold text-secondary sm:text-4xl lg:text-5xl">
               Liberación de celulares por R-SIM

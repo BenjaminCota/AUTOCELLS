@@ -44,7 +44,7 @@ export default function Home() {
     <div>
       {/* Hero */}
       <section className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
           <div>
             <h1 className="animate-hero-in text-3xl font-bold text-secondary sm:text-4xl lg:text-5xl">
               iPhones al mejor precio en San Luis Río Colorado
@@ -106,7 +106,7 @@ export default function Home() {
       {/* Categorías: tiles planos (sin badge circular), ícono arriba y una
           flecha que se desliza al hover. */}
       <section className="bg-bg-alt">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-secondary sm:text-3xl">Explora por categoría</h2>
           <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
             {categoryCards.map((category, index) => {
@@ -136,7 +136,7 @@ export default function Home() {
       {/* R-SIM destacado: panel de marca (color cian carga la sección) en vez
           del ícono-en-círculo genérico. */}
       <section className="bg-white">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8">
           <div className="relative flex flex-col items-start gap-6 overflow-hidden rounded-card bg-primary-dark px-6 py-12 text-white sm:px-12 lg:flex-row lg:items-center lg:justify-between">
             <Unlock
               className="pointer-events-none absolute -right-8 -top-8 h-52 w-52 text-white/10"
@@ -164,7 +164,7 @@ export default function Home() {
       {/* Productos destacados — se oculta mientras el catálogo esté vacío */}
       {featuredProducts.length > 0 && (
         <section className="bg-bg-alt">
-          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-secondary">Productos destacados</h2>
               <Link to="/catalogo" className="text-sm font-semibold text-primary-dark hover:underline">
@@ -184,7 +184,7 @@ export default function Home() {
 
       {/* Banner de confianza */}
       <section className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:grid-cols-3 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-16 sm:grid-cols-3 sm:px-6 lg:px-8">
           {trustPoints.map(({ icon: Icon, title, description }) => (
             <div key={title} className="flex flex-col items-center gap-2 text-center">
               <Icon className="h-8 w-8 text-primary-dark" strokeWidth={1.5} />
