@@ -47,6 +47,12 @@
 
   /* Entrada de las notificaciones toast (ToastContext). */
   --animate-toast-in: toast-in 300ms var(--ease-snappy) both;
+
+  /* Entrada genérica de secciones/tarjetas (fade + leve subida). Se usa con
+     animation-delay inline para escalonar rejillas (categorías, productos).
+     `both` mantiene el estado inicial antes de arrancar, así el contenido no
+     "parpadea" visible→oculto→visible. */
+  --animate-rise-in: rise-in 650ms var(--ease-snappy) both;
 }
 
 body {
@@ -140,6 +146,17 @@ body {
   }
 }
 
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Con prefers-reduced-motion, mismas keyframes sin transform: solo fade. */
 @media (prefers-reduced-motion: reduce) {
   @keyframes hero-in {
@@ -198,6 +215,15 @@ body {
   }
 
   @keyframes toast-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes rise-in {
     from {
       opacity: 0;
     }

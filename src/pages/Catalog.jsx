@@ -141,8 +141,16 @@ export default function Catalog() {
 
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
-          {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {filteredProducts.map((product, index) => (
+            // Entrada escalonada, con tope de delay para que los productos de
+            // más abajo no aparezcan con retraso perceptible.
+            <div
+              key={product.id}
+              className="animate-rise-in"
+              style={{ animationDelay: `${Math.min(index, 7) * 55}ms` }}
+            >
+              <ProductCard product={product} />
+            </div>
           ))}
         </div>
       ) : (

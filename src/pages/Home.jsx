@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Smartphone, Unlock, ShieldCheck, Award, Truck } from 'lucide-react';
+import { Smartphone, Unlock, ShieldCheck, Award, Truck, ArrowRight } from 'lucide-react';
 import { categories, categorySlug, useCatalog } from '../data/products';
 import ProductCard, { categoryIcons, priceFormatter } from '../components/ProductCard';
 import { STORE_FACEBOOK_URL } from '../data/store';
@@ -103,23 +103,29 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categorías */}
+      {/* Categorías: tiles planos (sin badge circular), ícono arriba y una
+          flecha que se desliza al hover. */}
       <section className="bg-bg-alt">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-secondary">Categorías</h2>
-          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-            {categoryCards.map((category) => {
+          <h2 className="text-2xl font-bold text-secondary sm:text-3xl">Explora por categoría</h2>
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
+            {categoryCards.map((category, index) => {
               const Icon = categoryIcons[category];
               return (
                 <Link
                   key={category}
                   to={`/catalogo?categoria=${encodeURIComponent(category)}`}
-                  className="flex flex-col items-center gap-3 rounded-card border border-secondary/10 bg-white p-6 text-center transition-shadow hover:shadow-md"
+                  style={{ animationDelay: `${index * 60}ms` }}
+                  className="group animate-rise-in flex h-full flex-col justify-between gap-8 rounded-card border border-secondary/10 bg-white p-5 transition-[transform,border-color,box-shadow] duration-200 ease-snappy hover:-translate-y-1 hover:border-primary-dark/30 hover:shadow-[0_16px_32px_-18px_rgba(14,116,144,0.4)]"
                 >
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary-dark">
-                    <Icon className="h-6 w-6" />
+                  <Icon
+                    className="h-7 w-7 text-primary-dark transition-transform duration-200 ease-snappy group-hover:scale-110"
+                    strokeWidth={1.75}
+                  />
+                  <span className="flex items-center justify-between gap-2 font-semibold text-secondary">
+                    {category}
+                    <ArrowRight className="h-4 w-4 -translate-x-1 text-muted opacity-0 transition-all duration-200 ease-snappy group-hover:translate-x-0 group-hover:text-primary-dark group-hover:opacity-100" />
                   </span>
-                  <span className="font-semibold text-secondary">{category}</span>
                 </Link>
               );
             })}
@@ -127,19 +133,31 @@ export default function Home() {
         </div>
       </section>
 
-      {/* R-SIM destacado */}
+      {/* R-SIM destacado: panel de marca (color cian carga la sección) en vez
+          del ícono-en-círculo genérico. */}
       <section className="bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-6 px-4 py-16 text-center sm:px-6 lg:px-8">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary-dark">
-            <Unlock className="h-7 w-7" strokeWidth={1.5} />
-          </span>
-          <h2 className="text-2xl font-bold text-secondary">Liberación por R-SIM desde $300</h2>
-          <p className="max-w-prose text-muted">
-            ¿Tu iPhone está bloqueado a una compañía? Lo liberamos el mismo día, con revisión sin costo.
-          </p>
-          <Link to="/servicios" className="text-sm font-semibold text-primary-dark hover:underline">
-            Conoce el servicio
-          </Link>
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="relative flex flex-col items-start gap-6 overflow-hidden rounded-card bg-primary-dark px-6 py-12 text-white sm:px-12 lg:flex-row lg:items-center lg:justify-between">
+            <Unlock
+              className="pointer-events-none absolute -right-8 -top-8 h-52 w-52 text-white/10"
+              strokeWidth={1}
+              aria-hidden="true"
+            />
+            <div className="relative max-w-xl">
+              <h2 className="text-2xl font-bold sm:text-3xl">Liberación por R-SIM desde $300</h2>
+              <p className="mt-3 text-white/85">
+                ¿Tu iPhone está bloqueado a una compañía? Lo liberamos el mismo día, con revisión sin
+                costo.
+              </p>
+            </div>
+            <Link
+              to="/servicios"
+              className="relative inline-flex shrink-0 items-center gap-2 rounded-card bg-white px-6 py-3.5 text-base font-semibold text-primary-dark shadow-sm transition-transform duration-150 ease-snappy hover:-translate-y-0.5 active:scale-95"
+            >
+              Conoce el servicio
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -154,8 +172,10 @@ export default function Home() {
               </Link>
             </div>
             <div className="mt-6 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {featuredProducts.map((product, index) => (
+                <div key={product.id} className="animate-rise-in" style={{ animationDelay: `${index * 70}ms` }}>
+                  <ProductCard product={product} />
+                </div>
               ))}
             </div>
           </div>

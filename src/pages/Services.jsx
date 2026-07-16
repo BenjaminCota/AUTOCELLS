@@ -173,6 +173,14 @@ function BookingModal({ services, initialServiceId, onClose }) {
       return;
     }
 
+    // El login se exige justo al confirmar: el usuario ya llenó todo. Sin
+    // sesión, se le manda a iniciar sesión (la cita se liga a su cuenta).
+    if (!isAuthenticated()) {
+      toast.info('Inicia sesión para confirmar tu cita.');
+      navigate('/login', { state: { from: { pathname: '/servicios' } } });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const appointment = await addAppointment({
@@ -432,10 +440,19 @@ function BookingModal({ services, initialServiceId, onClose }) {
           placeholder="653 000 0000"
         />
 
+        {/* Aviso solo para invitados: pueden llenar todo, pero al confirmar se
+            les pedirá iniciar sesión (la cita se liga a su cuenta). */}
+        {!isAuthenticated() && (
+          <p className="rounded-card border border-dashed border-primary-dark/25 bg-primary/5 px-4 py-2.5 text-xs text-secondary">
+            Para confirmar tu cita necesitarás iniciar sesión. Llena tus datos y te llevaremos al
+            paso final.
+          </p>
+        )}
+
         <button
           type="submit"
           disabled={submitting}
-          className="mt-1 flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
+          className="mt-1 flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-snappy enabled:hover:bg-primary-hover enabled:active:scale-[0.98] disabled:opacity-70"
         >
           {submitting ? (
             <>
@@ -445,7 +462,7 @@ function BookingModal({ services, initialServiceId, onClose }) {
           ) : (
             <>
               <CalendarClock className="h-4 w-4" />
-              Confirmar cita
+              {isAuthenticated() ? 'Confirmar cita' : 'Continuar'}
             </>
           )}
         </button>
@@ -456,7 +473,6 @@ function BookingModal({ services, initialServiceId, onClose }) {
 
 export default function Services() {
   const toast = useToast();
-  const navigate = useNavigate();
   const [services, setServices] = useState([]);
   // El primero (R-SIM, el servicio principal) protagoniza el hero; el resto se
   // listan como bloques debajo.
@@ -467,13 +483,8 @@ export default function Services() {
   const [bookingServiceId, setBookingServiceId] = useState(null);
 
   function openBooking(serviceId = null) {
-    // Agendar exige sesión: la cita se liga a una cuenta real (el server la
-    // rechaza sin sesión). Sin login, se manda a iniciar sesión y de vuelta acá.
-    if (!isAuthenticated()) {
-      toast.info('Inicia sesión para agendar una cita.');
-      navigate('/login', { state: { from: { pathname: '/servicios' } } });
-      return;
-    }
+    // El modal se abre y se llena sin sesión; el login se exige al CONFIRMAR
+    // (ver handleSubmit del BookingModal), no al abrir.
     setBookingServiceId(serviceId);
     setBookingOpen(true);
   }
@@ -545,9 +556,10 @@ export default function Services() {
         </div>
       </section>
 
-      {/* Compatibilidad */}
-      <section className="bg-white">
-        <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+      {/* Compatibilidad — mismo fondo que "¿Qué es?" para reducir los cambios
+          de color al hacer scroll (antes alternaba blanco/gris en cada bloque). */}
+      <section className="bg-bg-alt">
+        <div className="mx-auto max-w-3xl px-4 pb-16 sm:px-6 lg:px-8">
           <h2 className="text-center text-2xl font-bold text-secondary">Compatibilidad</h2>
           <ul className="mt-6 space-y-3">
             {compatibility.map((item) => (
@@ -561,7 +573,7 @@ export default function Services() {
       </section>
 
       {/* Proceso */}
-      <section className="bg-bg-alt">
+      <section className="bg-white">
         <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
           <h2 className="text-center text-2xl font-bold text-secondary">Cómo funciona</h2>
           <div className="mt-10 grid gap-8 sm:grid-cols-3">
@@ -595,7 +607,7 @@ export default function Services() {
               {otherServices.map((svc) => (
                 <div
                   key={svc.id}
-                  className="flex flex-col rounded-card border border-secondary/10 bg-white p-6 shadow-sm"
+                  className="flex flex-col rounded-card border border-secondary/10 bg-white p-6 transition-[transform,border-color,box-shadow] duration-200 ease-snappy hover:-translate-y-1 hover:border-primary-dark/25 hover:shadow-[0_18px_38px_-20px_rgba(14,116,144,0.4)]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-semibold text-secondary">{svc.name}</h3>
@@ -607,7 +619,7 @@ export default function Services() {
                   <button
                     type="button"
                     onClick={() => openBooking(svc.id)}
-                    className="mt-6 flex items-center justify-center gap-2 self-start rounded-card bg-primary-dark px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+                    className="mt-6 flex items-center justify-center gap-2 self-start rounded-card bg-primary-dark px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-snappy hover:bg-primary-hover active:scale-[0.98]"
                   >
                     <CalendarClock className="h-4 w-4" />
                     Agendar cita
@@ -619,14 +631,15 @@ export default function Services() {
         </section>
       )}
 
-      {/* CTA final */}
-      <section className="bg-secondary">
+      {/* CTA final en cian de marca (antes bg-secondary, el mismo gris oscuro
+          del footer: los dos juntos hacían ver el footer larguísimo). */}
+      <section className="bg-primary-dark">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-white">¿Tienes dudas sobre tu equipo?</h2>
-          <p className="text-white/80">Escríbenos y te decimos si tu iPhone es compatible antes de que vengas.</p>
+          <h2 className="text-2xl font-bold text-white sm:text-3xl">¿Tienes dudas sobre tu equipo?</h2>
+          <p className="text-white/85">Escríbenos y te decimos si tu iPhone es compatible antes de que vengas.</p>
           <Link
             to="/contacto"
-            className="rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+            className="mt-2 rounded-card bg-white px-6 py-3 text-sm font-semibold text-primary-dark shadow-sm transition-transform duration-150 ease-snappy hover:-translate-y-0.5 active:scale-95"
           >
             Contáctanos
           </Link>

@@ -9,6 +9,7 @@ export const STORE_HOURS_LINES = [
   'Sáb–Dom: 10:00 a.m. – 6:00 p.m.',
 ];
 export const STORE_HOURS = STORE_HOURS_LINES.join(' · ');
+export const STORE_EMAIL = 'autocells.av.17@gmail.com';
 export const STORE_INSTAGRAM_URL = 'https://www.instagram.com/autocellslopez';
 export const STORE_FACEBOOK_URL = 'https://www.facebook.com/profile.php?id=61583954035162';
 export const STORE_COORDS = { lat: 32.4506778, lng: -114.7725824 };
