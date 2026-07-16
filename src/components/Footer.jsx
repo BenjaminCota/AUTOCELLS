@@ -86,7 +86,7 @@ export default function Footer() {
           </span>
         </div>
 
-        <p className="mt-6 text-xs text-white/50">
+        <p className="mt-6 border-t border-white/10 pt-5 text-center text-xs text-white/50">
           © {new Date().getFullYear()} AUTOCELLS. Todos los derechos reservados.
         </p>
       </div>
