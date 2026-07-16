@@ -50,8 +50,12 @@ export default function Dashboard() {
   const monthSales = allOrders
     .filter((order) => order.status === 'entregado-vendido' && order.date.startsWith(monthKey))
     .reduce((sum, order) => sum + order.total, 0);
-  // Liberaciones realizadas: citas de R-SIM de este mes cuya fecha ya pasó.
-  const completedUnlocks = appointments.filter(
+  // Las canceladas no cuentan como citas activas: se quitan del resumen y de
+  // las métricas (al cancelar una, el dashboard resta 1).
+  const activeAppointments = appointments.filter((appointment) => appointment.status !== 'cancelada');
+  // Liberaciones realizadas: citas de R-SIM de este mes cuya fecha ya pasó
+  // (sin contar las canceladas).
+  const completedUnlocks = activeAppointments.filter(
     (appointment) =>
       appointment.serviceName.toLowerCase().includes('liberación') &&
       appointment.date.startsWith(monthKey) &&
@@ -76,13 +80,15 @@ export default function Dashboard() {
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-secondary">Citas agendadas</h2>
-          <span className="text-sm text-muted">{appointments.length} citas</span>
+          <span className="text-sm text-muted">
+            {activeAppointments.length} {activeAppointments.length === 1 ? 'cita' : 'citas'}
+          </span>
         </div>
         <AdminTable
           headers={['Cliente', 'Teléfono', 'Servicio', 'Fecha', 'Hora', 'Costo']}
           emptyMessage="No hay citas agendadas aún."
         >
-          {appointments.map((appointment) => (
+          {activeAppointments.map((appointment) => (
             <tr key={appointment.id}>
               <td className="px-4 py-3 font-medium text-secondary">{appointment.customerName}</td>
               <td className="px-4 py-3 text-muted">{appointment.customerPhone}</td>
