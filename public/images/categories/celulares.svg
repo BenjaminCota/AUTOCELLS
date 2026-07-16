@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="Celular">
+  <ellipse cx="64" cy="116" rx="30" ry="5.5" fill="#0e7490" opacity=".10"/>
+  <rect x="41" y="12" width="46" height="102" rx="13" fill="#3a3b3d"/>
+  <rect x="45" y="16" width="38" height="94" rx="9.5" fill="url(#cel)"/>
+  <rect x="55" y="20" width="18" height="5" rx="2.5" fill="#3a3b3d"/>
+  <circle cx="70" cy="22.5" r="1.4" fill="#2bb3d3"/>
+  <path d="M50 24 H60 L48 52 V38 Z" fill="#ffffff" opacity=".18"/>
+  <defs>
+    <linearGradient id="cel" x1="45" y1="16" x2="83" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2bb3d3"/>
+      <stop offset="1" stop-color="#0e7490"/>
+    </linearGradient>
+  </defs>
+</svg>

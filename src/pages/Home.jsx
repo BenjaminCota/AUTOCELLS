@@ -112,6 +112,7 @@ export default function Home() {
           <div className="-mx-4 mt-10 flex gap-8 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:overflow-visible sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categoryCards.map((category, index) => {
               const Icon = categoryIcons[category];
+              const image = `${import.meta.env.BASE_URL}images/categories/${categorySlug(category)}.svg`;
               return (
                 <Link
                   key={category}
@@ -119,8 +120,21 @@ export default function Home() {
                   style={{ animationDelay: `${index * 60}ms` }}
                   className="group animate-rise-in flex w-24 shrink-0 flex-col items-center gap-4 rounded-card py-2 sm:w-auto sm:flex-1"
                 >
-                  <span className="flex h-16 items-center justify-center transition-transform duration-200 ease-snappy group-hover:-translate-y-1.5">
-                    <Icon className="h-14 w-14 text-primary-dark" strokeWidth={1.25} />
+                  <span className="flex h-24 items-center justify-center transition-transform duration-200 ease-snappy group-hover:-translate-y-1.5">
+                    {/* Ilustración de la categoría (public/images/categories/).
+                        Si algún día falta el archivo, cae al ícono de categoría. */}
+                    <img
+                      src={image}
+                      alt=""
+                      aria-hidden="true"
+                      loading="lazy"
+                      className="h-20 w-20 object-contain"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                        event.currentTarget.nextElementSibling?.removeAttribute('hidden');
+                      }}
+                    />
+                    <Icon hidden className="h-14 w-14 text-primary-dark" strokeWidth={1.25} />
                   </span>
                   <span className="text-center text-sm font-semibold text-secondary transition-colors group-hover:text-primary-dark">
                     {category}
