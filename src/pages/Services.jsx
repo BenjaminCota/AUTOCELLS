@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Unlock,
   Smartphone,
   Settings2,
   CheckCircle2,
   CalendarClock,
+  MessageCircle,
   Sun,
   Sunset,
   ChevronLeft,
@@ -16,6 +17,14 @@ import { getAdminServices } from '../data/adminServices';
 import { getSlotsForDate, formatDateKey, addAppointment } from '../data/appointments';
 import { LIMITS, validatePersonName, validatePhone, validateDevice } from '../lib/validation';
 import { getCurrentUser, isAuthenticated } from '../routes/auth';
+import { whatsappLink } from '../data/store';
+
+// Foto real (Unsplash, URL verificada) para romper la monotonía de puro texto.
+const SERVICE_IMAGE =
+  'https://images.unsplash.com/photo-1562774555-079298a31cbe?auto=format&fit=crop&w=1100&q=80';
+
+// Beneficios que se repiten en la tarjeta de precio y en "¿Qué es?".
+const SERVICE_PERKS = ['Sin costos ocultos', 'Con garantía en el proceso', 'Listo el mismo día'];
 import { useToast } from '../context/ToastContext';
 import Modal from '../components/Modal';
 import FormField from '../components/FormField';
@@ -509,9 +518,11 @@ export default function Services() {
     <div>
       {/* Hero */}
       <section className="bg-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:px-8">
           <div>
-            <h1 className="text-3xl font-bold text-secondary sm:text-4xl">Liberación de celulares por R-SIM</h1>
+            <h1 className="text-3xl font-bold text-secondary sm:text-4xl lg:text-5xl">
+              Liberación de celulares por R-SIM
+            </h1>
             <p className="mt-4 max-w-prose text-muted">
               Si tu iPhone está bloqueado a una compañía, lo liberamos con R-SIM para que puedas usar
               cualquier chip, en México o en el extranjero. Revisión y diagnóstico sin costo.
@@ -521,49 +532,103 @@ export default function Services() {
                 type="button"
                 onClick={() => openBooking()}
                 disabled={services.length === 0}
-                className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3.5 text-base font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
+                className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-[background-color,transform] duration-150 ease-snappy enabled:hover:bg-primary-hover enabled:active:scale-[0.98] disabled:opacity-70"
               >
                 <CalendarClock className="h-5 w-5" />
                 {services.length === 0 ? 'Cargando servicios…' : 'Agendar una cita'}
               </button>
-              <Link
-                to="/contacto"
+              <a
+                href={whatsappLink('Hola, quiero liberar mi iPhone por R-SIM.')}
+                target="_blank"
+                rel="noreferrer"
                 className="flex items-center justify-center gap-2 rounded-card border border-secondary/20 px-6 py-3.5 text-base font-semibold text-secondary transition-colors hover:border-primary-dark hover:text-primary-dark"
               >
-                Ir a Contacto
-              </Link>
+                <MessageCircle className="h-5 w-5" />
+                WhatsApp
+              </a>
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-3 rounded-card bg-bg-alt p-10 text-center">
-            <Unlock className="h-14 w-14 text-primary-dark" strokeWidth={1.5} />
-            <p className="text-sm font-semibold uppercase tracking-wide text-muted">Precio único</p>
-            <p className="text-5xl font-bold text-secondary">${primaryService?.price ?? 300}</p>
-            <p className="text-sm text-muted">MXN, sin costos ocultos</p>
+          {/* Tarjeta de precio: encabezado cian, precio grande y checklist. */}
+          <div className="overflow-hidden rounded-card border border-secondary/10 bg-white shadow-[0_24px_60px_-28px_rgba(14,116,144,0.5)]">
+            <div className="bg-primary-dark px-6 py-5 text-center text-white">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                Liberación por R-SIM
+              </p>
+              <p className="mt-1 text-5xl font-bold">
+                ${primaryService?.price ?? 300}
+                <span className="ml-1 text-lg font-semibold text-white/80">MXN</span>
+              </p>
+            </div>
+            <div className="flex flex-col gap-4 p-6">
+              <ul className="flex flex-col gap-2.5">
+                {SERVICE_PERKS.map((perk) => (
+                  <li key={perk} className="flex items-center gap-2 text-sm text-secondary">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-success-dark" />
+                    {perk}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => openBooking()}
+                disabled={services.length === 0}
+                className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-5 py-3 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-snappy enabled:hover:bg-primary-hover enabled:active:scale-[0.98] disabled:opacity-70"
+              >
+                <CalendarClock className="h-4 w-4" />
+                Agendar
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Qué es */}
-      <section className="bg-bg-alt">
-        <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-secondary">¿Qué es la liberación por R-SIM?</h2>
-          <p className="mt-4 text-muted">
-            R-SIM es un chip que se coloca junto a la tarjeta SIM de tu iPhone y engaña al sistema para que
-            acepte señal de cualquier compañía. Es una solución de software y hardware externa: no se abre
-            ni se modifica el equipo por dentro, así que no pierde la garantía física.
-          </p>
+      {/* Qué es — panel con gradiente azul, foto real del chip y beneficios. */}
+      <section className="bg-gradient-to-br from-primary-dark to-primary-hover text-white">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="overflow-hidden rounded-card bg-white/10 shadow-lg ring-1 ring-white/15">
+            <img
+              src={SERVICE_IMAGE}
+              alt="Chip R-SIM que se coloca junto a la tarjeta SIM del iPhone para liberarlo"
+              loading="lazy"
+              className="aspect-[4/3] h-full w-full object-cover"
+            />
+          </div>
+          <div>
+            <span className="flex h-14 w-14 items-center justify-center rounded-card bg-white/15">
+              <Unlock className="h-7 w-7 text-white" strokeWidth={1.75} />
+            </span>
+            <h2 className="mt-5 text-2xl font-bold sm:text-3xl">¿Qué es la liberación por R-SIM?</h2>
+            <p className="mt-4 text-white/85">
+              R-SIM es un chip que se coloca junto a la tarjeta SIM de tu iPhone y engaña al sistema
+              para que acepte señal de cualquier compañía. Es una solución externa: no se abre ni se
+              modifica el equipo por dentro.
+            </p>
+            <ul className="mt-6 flex flex-col gap-3">
+              {['Compatible con cualquier compañía', 'Seguro: no se abre el equipo', 'Sin perder la garantía'].map(
+                (perk) => (
+                  <li key={perk} className="flex items-center gap-3 font-medium">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-white" />
+                    {perk}
+                  </li>
+                ),
+              )}
+            </ul>
+          </div>
         </div>
       </section>
 
-      {/* Compatibilidad — mismo fondo que "¿Qué es?" para reducir los cambios
-          de color al hacer scroll (antes alternaba blanco/gris en cada bloque). */}
+      {/* Compatibilidad — checklist en dos columnas para llenar el ancho y no
+          dejar tanto vacío a los lados. */}
       <section className="bg-bg-alt">
-        <div className="mx-auto max-w-3xl px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
           <h2 className="text-center text-2xl font-bold text-secondary">Compatibilidad</h2>
-          <ul className="mt-6 space-y-3">
+          <ul className="mx-auto mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">
             {compatibility.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-secondary">
+              <li
+                key={item}
+                className="flex items-start gap-3 rounded-card border border-secondary/10 bg-white p-4 text-sm text-secondary"
+              >
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success-dark" />
                 {item}
               </li>
@@ -572,21 +637,27 @@ export default function Services() {
         </div>
       </section>
 
-      {/* Proceso */}
+      {/* Proceso — los 3 pasos conectados con una línea horizontal (en desktop)
+          para que se lea como una secuencia, no como íconos sueltos. */}
       <section className="bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
           <h2 className="text-center text-2xl font-bold text-secondary">Cómo funciona</h2>
-          <div className="mt-10 grid gap-8 sm:grid-cols-3">
+          <div className="relative mt-10 grid gap-8 sm:grid-cols-3">
+            {/* Línea conectora entre los centros del primer y último ícono. */}
+            <div
+              className="pointer-events-none absolute left-[16.66%] right-[16.66%] top-8 hidden h-0.5 bg-primary-dark/20 sm:block"
+              aria-hidden="true"
+            />
             {steps.map(({ number, icon: Icon, title, description }) => (
-              <div key={number} className="flex flex-col items-center gap-3 text-center">
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary-dark text-white">
+              <div key={number} className="relative flex flex-col items-center gap-3 text-center">
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary-dark text-white ring-8 ring-white">
                   <Icon className="h-7 w-7" strokeWidth={1.75} />
                   <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-bold text-white">
                     {number}
                   </span>
                 </div>
                 <h3 className="font-semibold text-secondary">{title}</h3>
-                <p className="text-sm text-muted">{description}</p>
+                <p className="max-w-xs text-sm text-muted">{description}</p>
               </div>
             ))}
           </div>
@@ -597,8 +668,8 @@ export default function Services() {
           muestra su descripción (antes invisible para el cliente) y agenda con
           el MISMO calendario compartido. */}
       {otherServices.length > 0 && (
-        <section className="bg-white">
-          <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
+        <section className="bg-bg-alt">
+          <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
             <h2 className="text-center text-2xl font-bold text-secondary">Otros servicios</h2>
             <p className="mt-2 text-center text-muted">
               Además de la liberación por R-SIM, en AUTOCELLS también te ofrecemos:
@@ -631,18 +702,37 @@ export default function Services() {
         </section>
       )}
 
-      {/* CTA final en cian de marca (antes bg-secondary, el mismo gris oscuro
-          del footer: los dos juntos hacían ver el footer larguísimo). */}
-      <section className="bg-primary-dark">
+      {/* CTA final de cierre de venta: gradiente cian (distinto del footer
+          oscuro) con acción principal (agendar) y secundaria (WhatsApp). */}
+      <section className="bg-gradient-to-br from-primary-dark to-primary-hover">
         <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-white sm:text-3xl">¿Tienes dudas sobre tu equipo?</h2>
-          <p className="text-white/85">Escríbenos y te decimos si tu iPhone es compatible antes de que vengas.</p>
-          <Link
-            to="/contacto"
-            className="mt-2 rounded-card bg-white px-6 py-3 text-sm font-semibold text-primary-dark shadow-sm transition-transform duration-150 ease-snappy hover:-translate-y-0.5 active:scale-95"
-          >
-            Contáctanos
-          </Link>
+          <h2 className="text-2xl font-bold text-white sm:text-3xl lg:text-4xl">
+            ¿Listo para liberar tu iPhone?
+          </h2>
+          <p className="max-w-prose text-white/85">
+            Agenda tu cita hoy mismo y sal el mismo día con tu equipo funcionando en cualquier
+            compañía.
+          </p>
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => openBooking()}
+              disabled={services.length === 0}
+              className="flex items-center justify-center gap-2 rounded-card bg-white px-7 py-3.5 text-base font-semibold text-primary-dark shadow-sm transition-transform duration-150 ease-snappy enabled:hover:-translate-y-0.5 enabled:active:scale-95 disabled:opacity-70"
+            >
+              <CalendarClock className="h-5 w-5" />
+              Agendar ahora
+            </button>
+            <a
+              href={whatsappLink('Hola, quiero agendar la liberación de mi iPhone por R-SIM.')}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2 rounded-card border border-white/40 px-7 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/10"
+            >
+              <MessageCircle className="h-5 w-5" />
+              WhatsApp
+            </a>
+          </div>
         </div>
       </section>
 
