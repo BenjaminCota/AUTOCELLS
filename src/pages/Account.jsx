@@ -218,9 +218,12 @@ export default function Account() {
                         {appointment.date} a las {appointment.time}
                       </p>
                     </div>
-                    <p className="text-sm font-bold text-secondary">
-                      {priceFormatter.format(appointment.servicePrice)}
-                    </p>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <Badge variant={appointment.status}>{appointment.status}</Badge>
+                      <p className="text-sm font-bold text-secondary">
+                        {priceFormatter.format(appointment.servicePrice)}
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>
