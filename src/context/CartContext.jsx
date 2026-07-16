@@ -1,5 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useCatalog } from '../data/products';
+import { useToast } from './ToastContext';
+
+// Tope de piezas por renglón: nunca más que el stock del producto (los
+// productos del admin traen `stockCount` numérico; los estáticos no llevan
+// inventario, así que caen al tope duro de 99).
+function stockCap(product) {
+  return product?.stockCount != null ? Math.min(product.stockCount, 99) : 99;
+}
 
 // El carrito vive 100% en el frontend (localStorage) para sobrevivir recargas;
 // solo el pedido final se manda al API. Los renglones guardan la forma cruda
@@ -29,6 +37,7 @@ function readStoredItems() {
 
 export function CartProvider({ children }) {
   const { products } = useCatalog();
+  const toast = useToast();
   const [items, setItems] = useState(readStoredItems);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -54,11 +63,26 @@ export function CartProvider({ children }) {
     function addItem(product, { storage, color } = {}) {
       const entry = { id: product.id, storage, color };
       const key = lineKey(entry);
+      const max = stockCap(product);
+      // Cuántas piezas de este renglón ya hay en el carrito (estado actual de
+      // este render): si ya se llegó al stock, no se agrega y se avisa.
+      const currentQty = items.find((item) => lineKey(item) === key)?.qty ?? 0;
+      if (currentQty >= max) {
+        toast.info(
+          max < 1
+            ? 'Este producto está agotado.'
+            : `Solo hay ${max} pieza${max === 1 ? '' : 's'} disponibles y ya las tienes en el carrito.`,
+        );
+        setIsOpen(true);
+        return;
+      }
       setItems((current) => {
         const existing = current.find((item) => lineKey(item) === key);
         if (existing) {
+          // El tope se aplica también aquí (no solo en el check de arriba) para
+          // que dos clics muy rápidos nunca rebasen el stock.
           return current.map((item) =>
-            lineKey(item) === key ? { ...item, qty: Math.min(item.qty + 1, 99) } : item,
+            lineKey(item) === key ? { ...item, qty: Math.min(item.qty + 1, max) } : item,
           );
         }
         return [...current, { ...entry, qty: 1 }];
@@ -67,11 +91,14 @@ export function CartProvider({ children }) {
     }
 
     function setQty(key, qty) {
-      setItems((current) =>
-        qty < 1
-          ? current.filter((item) => lineKey(item) !== key)
-          : current.map((item) => (lineKey(item) === key ? { ...item, qty: Math.min(qty, 99) } : item)),
-      );
+      setItems((current) => {
+        if (qty < 1) return current.filter((item) => lineKey(item) !== key);
+        const line = current.find((item) => lineKey(item) === key);
+        const product = line && products.find((p) => p.id === line.id);
+        return current.map((item) =>
+          lineKey(item) === key ? { ...item, qty: Math.min(qty, stockCap(product)) } : item,
+        );
+      });
     }
 
     function removeItem(key) {
@@ -90,7 +117,7 @@ export function CartProvider({ children }) {
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
     };
-  }, [items, isOpen, products]);
+  }, [items, isOpen, products, toast]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
