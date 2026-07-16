@@ -87,7 +87,12 @@ function CartButton({ count, onClick }) {
     >
       <ShoppingCart className="h-6 w-6" />
       {count > 0 && (
-        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-dark px-1 text-[10px] font-bold text-white">
+        // key={count}: remonta el badge en cada cambio para re-disparar el
+        // rebote (una animación CSS solo corre al montar el elemento).
+        <span
+          key={count}
+          className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 animate-cart-bump items-center justify-center rounded-full bg-primary-dark px-1 text-[10px] font-bold text-white"
+        >
           {count > 9 ? '9+' : count}
         </span>
       )}
@@ -114,7 +119,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-secondary/10 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2">
           <Logo />
           <span className="text-lg font-bold uppercase tracking-widest text-secondary">

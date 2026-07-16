@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Smartphone, Shield, BatteryCharging, Headphones, Layers, ShoppingCart, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Smartphone, Shield, BatteryCharging, Headphones, Layers, ShoppingCart, ShieldCheck, ShieldOff, ArrowRight } from 'lucide-react';
 import Badge from './Badge';
 import { categorySlug } from '../data/products';
 import { useCart } from '../context/CartContext';
@@ -24,6 +24,10 @@ export const priceFormatter = new Intl.NumberFormat('es-MX', {
 export default function ProductCard({ product }) {
   const Icon = categoryIcons[product.category] ?? Smartphone;
   const isAgotado = product.stock === 'agotado';
+  // Existencias bajas → genera urgencia. stockCount solo lo traen los productos
+  // del admin (los estáticos son undefined → no se muestra número).
+  const lowStock =
+    !isAgotado && typeof product.stockCount === 'number' && product.stockCount > 0 && product.stockCount <= 5;
   // null también para celulares marcados "sin garantía" — ahí se dice explícito.
   const warranty = warrantyLabel(product);
   const { addItem } = useCart();
@@ -50,7 +54,7 @@ export default function ProductCard({ product }) {
             src={product.image}
             alt={product.name}
             loading="lazy"
-            className="h-full w-full object-contain p-5 transition-transform duration-300 ease-snappy group-hover:scale-105"
+            className="h-full w-full object-contain p-4 transition-transform duration-300 ease-snappy group-hover:scale-105"
           />
         ) : (
           // Fallback para productos sin imagen (ej. los creados desde el admin).
@@ -88,25 +92,43 @@ export default function ProductCard({ product }) {
           </p>
         )}
 
-        <div className="mt-auto flex items-end justify-between gap-3 pt-3">
-          <p className="text-xl font-bold text-secondary">{priceFormatter.format(product.price)}</p>
+        <div className="mt-auto pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xl font-bold text-secondary">{priceFormatter.format(product.price)}</p>
+            {/* Disponibilidad: agotado / pocas piezas (urgencia) / disponible. */}
+            {isAgotado ? (
+              <span className="text-xs font-semibold text-muted">Sin existencias</span>
+            ) : lowStock ? (
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-danger-dark">
+                <span className="h-1.5 w-1.5 rounded-full bg-danger-dark" />
+                Quedan {product.stockCount}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-success-dark">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                Disponible
+              </span>
+            )}
+          </div>
+
           <button
             type="button"
             disabled={isAgotado}
             onClick={handleQuickAdd}
             aria-label={`Agregar ${product.name} al carrito`}
-            title="Agregar al carrito"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card border border-secondary/20 text-secondary transition-colors enabled:hover:border-primary-dark enabled:hover:bg-primary-dark enabled:hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-card bg-primary-dark px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-snappy enabled:hover:bg-primary-hover enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ShoppingCart className="h-4 w-4" />
+            {isAgotado ? 'Agotado' : 'Agregar al carrito'}
           </button>
+          <Link
+            to={detailHref}
+            className="group/ver mt-2 flex w-full items-center justify-center gap-1.5 rounded-card border border-secondary/20 px-4 py-2 text-sm font-semibold text-secondary transition-colors hover:border-primary-dark hover:text-primary-dark"
+          >
+            Ver detalles
+            <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-snappy group-hover/ver:translate-x-1" />
+          </Link>
         </div>
-        <Link
-          to={detailHref}
-          className="mt-3 block rounded-card bg-primary-dark px-4 py-2.5 text-center text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-snappy hover:bg-primary-hover active:scale-[0.98]"
-        >
-          Ver detalle
-        </Link>
       </div>
     </div>
   );

@@ -1,9 +1,18 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { Search, X, SearchX, LayoutGrid } from 'lucide-react';
 import { categories, priceRanges, useCatalog } from '../data/products';
-import ProductCard from '../components/ProductCard';
+import ProductCard, { categoryIcons } from '../components/ProductCard';
 import CatalogFilters from '../components/CatalogFilters';
+
+// Opciones del ordenamiento. 'recientes' respeta el orden que ya trae el store
+// (destacado + más nuevo), así que no reordena.
+const sortOptions = [
+  { value: 'recientes', label: 'Más recientes' },
+  { value: 'precio-asc', label: 'Precio: menor a mayor' },
+  { value: 'precio-desc', label: 'Precio: mayor a menor' },
+  { value: 'nombre', label: 'Nombre (A–Z)' },
+];
 
 const defaultFilters = {
   category: 'Todos',
@@ -31,6 +40,7 @@ export default function Catalog() {
   const { products } = useCatalog();
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState('recientes');
 
   const [filters, setFilters] = useState(() => {
     const requestedCategory = searchParams.get('categoria');
@@ -84,6 +94,21 @@ export default function Catalog() {
     });
   }, [filters, search, products]);
 
+  const sortedProducts = useMemo(() => {
+    const list = [...filteredProducts];
+    switch (sort) {
+      case 'precio-asc':
+        return list.sort((a, b) => a.price - b.price);
+      case 'precio-desc':
+        return list.sort((a, b) => b.price - a.price);
+      case 'nombre':
+        return list.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+      default:
+        // 'recientes': el store ya llega ordenado (destacado + más nuevo).
+        return list;
+    }
+  }, [filteredProducts, sort]);
+
   function handleFilterChange(key, value) {
     setFilters((prev) =>
       key === 'category'
@@ -99,11 +124,40 @@ export default function Catalog() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Catálogo</h1>
+      <p className="mt-1 text-muted">Explora por categoría o busca el equipo que necesitas.</p>
+
+      {/* Barra de categorías: navegación visible (además del panel "Filtrar").
+          En móvil hace scroll horizontal; en desktop envuelve. */}
+      <nav
+        aria-label="Categorías"
+        className="-mx-4 mt-5 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {categories.map((category) => {
+          const CategoryIcon = category === 'Todos' ? LayoutGrid : categoryIcons[category] ?? LayoutGrid;
+          const isActive = filters.category === category;
+          return (
+            <button
+              key={category}
+              type="button"
+              onClick={() => handleFilterChange('category', category)}
+              aria-pressed={isActive}
+              className={`flex shrink-0 items-center gap-2 rounded-card border px-4 py-2.5 text-sm font-semibold transition-[color,background-color,border-color,transform,box-shadow] duration-200 ease-snappy ${
+                isActive
+                  ? 'border-primary-dark bg-primary-dark text-white shadow-[0_10px_24px_-14px_rgba(14,116,144,0.75)]'
+                  : 'border-secondary/15 bg-white text-secondary hover:-translate-y-0.5 hover:border-primary-dark/40 hover:text-primary-dark'
+              }`}
+            >
+              <CategoryIcon className="h-4 w-4" strokeWidth={2} />
+              {category}
+            </button>
+          );
+        })}
+      </nav>
 
       {/* Buscador */}
-      <div className="relative mt-4">
+      <div className="relative mt-5">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
         <input
           type="search"
@@ -111,7 +165,7 @@ export default function Catalog() {
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Buscar por nombre, marca o modelo…"
           aria-label="Buscar productos"
-          className="w-full rounded-card border border-secondary/20 bg-white py-3 pl-12 pr-11 text-sm text-secondary placeholder:text-muted transition-colors focus:border-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-dark/20 [&::-webkit-search-cancel-button]:hidden"
+          className="w-full rounded-card border border-secondary/15 bg-bg-alt py-3 pl-12 pr-11 text-sm text-secondary placeholder:text-muted transition-colors focus:border-primary-dark focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-dark/20 [&::-webkit-search-cancel-button]:hidden"
         />
         {search && (
           <button
@@ -125,7 +179,27 @@ export default function Catalog() {
         )}
       </div>
 
-      <p className="mt-3 text-muted">{filteredProducts.length} productos encontrados</p>
+      {/* Barra de resultados: conteo + ordenamiento en la misma fila. */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          {sortedProducts.length} {sortedProducts.length === 1 ? 'producto' : 'productos'}
+        </p>
+        <label className="flex items-center gap-2 text-sm text-muted">
+          Ordenar por
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+            aria-label="Ordenar productos"
+            className="rounded-card border border-secondary/20 bg-white py-2 pl-3 pr-8 text-sm font-medium text-secondary transition-colors focus:border-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-dark/20"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <div className="mt-3">
         <CatalogFilters
@@ -139,9 +213,9 @@ export default function Catalog() {
       {/* sr-only: evita saltar de h1 a los h3 de ProductCard sin un h2 intermedio */}
       <h2 className="sr-only">Resultados</h2>
 
-      {filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
-          {filteredProducts.map((product, index) => (
+      {sortedProducts.length > 0 ? (
+        <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
+          {sortedProducts.map((product, index) => (
             // Entrada escalonada, con tope de delay para que los productos de
             // más abajo no aparezcan con retraso perceptible.
             <div
@@ -154,12 +228,18 @@ export default function Catalog() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-card border border-dashed border-secondary/20 py-16 text-center text-muted">
-          <p>No encontramos productos que coincidan con tu búsqueda y filtros.</p>
+        <div className="flex flex-col items-center gap-4 rounded-card border border-dashed border-secondary/20 bg-bg-alt/60 py-16 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-primary-dark shadow-sm">
+            <SearchX className="h-7 w-7" />
+          </span>
+          <div>
+            <p className="font-semibold text-secondary">No encontramos productos</p>
+            <p className="mt-1 text-sm text-muted">Prueba con otra búsqueda o quita algunos filtros.</p>
+          </div>
           <button
             type="button"
             onClick={clearAll}
-            className="text-sm font-semibold text-primary-dark hover:underline"
+            className="rounded-card bg-primary-dark px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
           >
             Limpiar búsqueda y filtros
           </button>

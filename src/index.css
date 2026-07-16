@@ -53,6 +53,10 @@
      `both` mantiene el estado inicial antes de arrancar, así el contenido no
      "parpadea" visible→oculto→visible. */
   --animate-rise-in: rise-in 650ms var(--ease-snappy) both;
+
+  /* Rebote del badge del carrito al cambiar el conteo. Se re-dispara
+     remontando el badge con key={count} (ver Header.jsx). */
+  --animate-cart-bump: cart-bump 400ms var(--ease-snappy);
 }
 
 body {
@@ -157,6 +161,18 @@ body {
   }
 }
 
+@keyframes cart-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* Con prefers-reduced-motion, mismas keyframes sin transform: solo fade. */
 @media (prefers-reduced-motion: reduce) {
   @keyframes hero-in {
@@ -229,6 +245,14 @@ body {
     }
     to {
       opacity: 1;
+    }
+  }
+
+  /* Sin rebote: el badge solo aparece, sin escalar. */
+  @keyframes cart-bump {
+    0%,
+    100% {
+      transform: scale(1);
     }
   }
 }
