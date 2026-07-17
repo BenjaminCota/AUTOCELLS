@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, X, SearchX, LayoutGrid } from 'lucide-react';
-import { categories, priceRanges, useCatalog } from '../data/products';
+import { categories, priceRanges, productStatuses, useCatalog } from '../data/products';
 import ProductCard, { categoryIcons } from '../components/ProductCard';
 import CatalogFilters from '../components/CatalogFilters';
 
@@ -77,7 +77,12 @@ export default function Catalog() {
       }
 
       if (filters.category !== 'Todos' && product.category !== filters.category) return false;
-      if (filters.status !== 'Todos' && product.status !== filters.status.toLowerCase()) return false;
+      // El filtro guarda el label ('Usado como nuevo'); el producto trae el
+      // value ('usado-como-nuevo'), así que se traduce con productStatuses.
+      if (filters.status !== 'Todos') {
+        const statusValue = productStatuses.find((option) => option.label === filters.status)?.value;
+        if (product.status !== statusValue) return false;
+      }
       if (product.price < range.min || product.price > range.max) return false;
 
       // Contextuales: al cambiar de categoría vuelven a 'Todos', así que solo

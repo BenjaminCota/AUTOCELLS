@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ShoppingBag, ShoppingCart, Check, PackageSearch, ShieldCheck, ShieldOff } from 'lucide-react';
-import { useCatalog } from '../data/products';
+import { useCatalog, statusLabel } from '../data/products';
 import { warrantyMonths, warrantyLabel } from '../lib/warranty';
 import ProductCard, { categoryIcons, priceFormatter } from '../components/ProductCard';
 import Badge from '../components/Badge';
@@ -139,7 +139,7 @@ export default function ProductDetail() {
           <h1 className="text-2xl font-bold text-secondary sm:text-3xl">{product.name}</h1>
 
           <div className="flex items-center gap-2">
-            <Badge variant={product.status}>{product.status === 'nuevo' ? 'Nuevo' : 'Seminuevo'}</Badge>
+            <Badge variant={product.status}>{statusLabel(product.status)}</Badge>
             {product.stock === 'agotado' && <Badge variant="agotado">Agotado</Badge>}
           </div>
 

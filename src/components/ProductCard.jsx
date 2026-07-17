@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Smartphone, Shield, BatteryCharging, Headphones, Layers, ShoppingCart, ShieldCheck, ShieldOff, ArrowRight } from 'lucide-react';
 import Badge from './Badge';
-import { categorySlug } from '../data/products';
+import { categorySlug, statusLabel } from '../data/products';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { warrantyLabel } from '../lib/warranty';
@@ -61,7 +61,7 @@ export default function ProductCard({ product }) {
           <Icon className="h-16 w-16 text-secondary/25 transition-transform duration-300 ease-snappy group-hover:scale-105" strokeWidth={1.5} />
         )}
         <div className="absolute left-3 top-3">
-          <Badge variant={product.status}>{product.status === 'nuevo' ? 'Nuevo' : 'Seminuevo'}</Badge>
+          <Badge variant={product.status}>{statusLabel(product.status)}</Badge>
         </div>
         {isAgotado && (
           <div className="absolute right-3 top-3">

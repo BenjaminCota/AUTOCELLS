@@ -1,6 +1,8 @@
 const variants = {
   nuevo: 'bg-primary/10 text-primary-dark',
   seminuevo: 'bg-secondary/10 text-secondary',
+  // Verde: comunica "en excelente condición" sin confundirse con "nuevo".
+  'usado-como-nuevo': 'bg-success/10 text-success-dark',
   disponible: 'bg-success/10 text-success-dark',
   agotado: 'bg-danger/10 text-danger-dark',
   pendiente: 'bg-primary/10 text-primary-dark',

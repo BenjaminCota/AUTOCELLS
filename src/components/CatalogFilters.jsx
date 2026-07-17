@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { SlidersHorizontal, ChevronDown, X } from 'lucide-react';
-import { categories, priceRanges, useCatalog } from '../data/products';
+import { categories, priceRanges, productStatuses, useCatalog } from '../data/products';
 
 const STORAGE_ORDER = ['64GB', '128GB', '256GB', '512GB', '1TB'];
 
@@ -141,7 +141,7 @@ export default function CatalogFilters({ filters, onChange, onReset, hasActiveFi
           />
           <ChipGroup
             label="Estado"
-            options={['Todos', 'Nuevo', 'Seminuevo']}
+            options={['Todos', ...productStatuses.map((option) => option.label)]}
             value={filters.status}
             onChange={(value) => onChange('status', value)}
           />

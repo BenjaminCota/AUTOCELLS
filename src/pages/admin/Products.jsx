@@ -7,6 +7,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import { categoryIcons, priceFormatter } from '../../components/ProductCard';
 import { useToast } from '../../context/ToastContext';
 import { getAdminProducts, deleteAdminProduct, setAdminProductFeatured, sellAdminProduct } from '../../data/adminProducts';
+import { statusLabel } from '../../data/products';
 
 // Mismo orden que regresa el API: el destacado anclado arriba, luego por fecha.
 // Se replica aquí para reacomodar la lista al destacar sin volver a pedirla.
@@ -141,7 +142,7 @@ export default function Products() {
                 {product.stock}
               </td>
               <td className="px-4 py-3">
-                <Badge variant={product.status}>{product.status === 'nuevo' ? 'Nuevo' : 'Seminuevo'}</Badge>
+                <Badge variant={product.status}>{statusLabel(product.status)}</Badge>
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">

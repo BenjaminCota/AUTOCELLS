@@ -23,6 +23,20 @@ export const priceRanges = [
   { label: 'Más de $10,000', min: 10000, max: Infinity },
 ];
 
+// Estados de producto: `value` viaja a la base tal cual; `label` es lo que ve
+// el cliente. 'usado-como-nuevo' solo aplica a celulares — el formulario del
+// admin lo ofrece únicamente en esa categoría. Toda superficie que muestre el
+// estado debe usar statusLabel() en vez de un ternario nuevo/seminuevo.
+export const productStatuses = [
+  { value: 'nuevo', label: 'Nuevo' },
+  { value: 'seminuevo', label: 'Seminuevo' },
+  { value: 'usado-como-nuevo', label: 'Usado como nuevo' },
+];
+
+export function statusLabel(status) {
+  return productStatuses.find((option) => option.value === status)?.label ?? status;
+}
+
 // Slug de ruta (/catalogo/:category/:productId): minúsculas y espacios → guiones
 // para que "Protector de pantalla" no genere %20 en la URL.
 export function categorySlug(category) {
@@ -39,7 +53,7 @@ function productImage(file) {
 // Catálogo estático vacío a propósito: los productos capturados a mano van
 // aquí; los del admin (SQLite) se combinan abajo en el store del catálogo.
 // Forma de cada producto: { id, name, category, brand, price,
-// status: 'nuevo' | 'seminuevo', stock: 'disponible' | 'agotado', description,
+// status: value de productStatuses, stock: 'disponible' | 'agotado', description,
 // colors, más los atributos contextuales de su categoría (storage,
 // compatibleModels, chargerInput, screenProtectorType, privacy). No definir
 // image/images a mano: se asignan abajo a partir del id.

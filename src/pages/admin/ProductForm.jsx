@@ -6,6 +6,7 @@ import Alert from '../../components/Alert';
 import Modal from '../../components/Modal';
 import { useToast } from '../../context/ToastContext';
 import { addAdminProduct, getAdminProduct, updateAdminProduct } from '../../data/adminProducts';
+import { productStatuses, statusLabel } from '../../data/products';
 import { warrantyLabel } from '../../lib/warranty';
 import {
   LIMITS,
@@ -16,10 +17,6 @@ import {
 } from '../../lib/validation';
 
 const categoryOptions = ['Celular', 'Fundas', 'Cargadores', 'Accesorios', 'Protector de pantalla'];
-const statusOptions = [
-  { value: 'nuevo', label: 'Nuevo' },
-  { value: 'seminuevo', label: 'Seminuevo' },
-];
 const storageOptions = ['64GB', '128GB', '256GB', '512GB', '1TB'];
 const brandOptions = [
   { value: 'iPhone', label: 'iPhone' },
@@ -230,13 +227,27 @@ export default function ProductForm() {
   const photoPreview = photos[0]?.dataUrl ?? null;
   const isCellphoneCategory = form.category === 'Celular';
   const isCaseCategory = form.category === 'Fundas';
+  // 'Usado como nuevo' es un estado exclusivo de celulares; en las demás
+  // categorías el select solo ofrece nuevo/seminuevo.
+  const statusOptions = isCellphoneCategory
+    ? productStatuses
+    : productStatuses.filter((option) => option.value !== 'usado-como-nuevo');
   const isChargerCategory = form.category === 'Cargadores';
   const isScreenProtectorCategory = form.category === 'Protector de pantalla';
   const PreviewIcon = previewIcons[form.category] ?? Smartphone;
 
   function handleChange(event) {
     const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+      // 'Usado como nuevo' solo existe en celulares: al cambiar a otra
+      // categoría se regresa a 'nuevo' para no dejar el select en un valor
+      // que ya no está entre sus opciones.
+      if (name === 'category' && value !== 'Celular' && prev.status === 'usado-como-nuevo') {
+        next.status = 'nuevo';
+      }
+      return next;
+    });
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     setFormError('');
   }
@@ -755,7 +766,7 @@ export default function ProductForm() {
                 <PreviewIcon className="h-16 w-16 text-secondary/30" strokeWidth={1.5} />
               )}
               <span className="absolute left-3 top-3 rounded-full bg-primary-dark/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
-                {form.status === 'nuevo' ? 'Nuevo' : 'Seminuevo'}
+                {statusLabel(form.status)}
               </span>
             </div>
             <div className="space-y-2 p-4">
