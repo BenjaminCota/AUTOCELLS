@@ -200,7 +200,7 @@ export default function Catalog() {
   }
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1800px] px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Catálogo</h1>
       <p className="mt-1 text-muted">Explora por categoría o busca el equipo que necesitas.</p>
 
@@ -291,7 +291,7 @@ export default function Catalog() {
 
       {sortedProducts.length > 0 ? (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5 2xl:grid-cols-6">
             {pagedProducts.map((product, index) => (
               // Entrada escalonada, con tope de delay para que los productos de
               // más abajo no aparezcan con retraso perceptible.

@@ -52,7 +52,7 @@ const contactMethods = [
 
 export default function Contact() {
   return (
-    <div className="mx-auto max-w-[1440px] px-4 py-12 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-[1800px] px-4 py-12 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold text-secondary sm:text-4xl">Contacto</h1>
       <p className="mt-2 max-w-prose text-muted">
         ¿Dudas sobre un equipo o la liberación por R-SIM? Escríbenos por el medio que prefieras o pasa

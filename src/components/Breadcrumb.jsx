@@ -29,7 +29,7 @@ export default function Breadcrumb() {
 
   return (
     <nav aria-label="Breadcrumb" className="border-b border-secondary/10 bg-bg-alt">
-      <div className="mx-auto max-w-[1440px] px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1800px] px-4 py-3 sm:px-6 lg:px-8">
         {/* Escritorio: recorrido completo */}
         <ol className="hidden items-center gap-2 text-sm font-medium md:flex">
           <HomeCrumb />

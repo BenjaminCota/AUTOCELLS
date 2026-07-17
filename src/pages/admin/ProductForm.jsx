@@ -372,7 +372,7 @@ export default function ProductForm() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-7xl">
       <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">
         {isEditing ? 'Editar producto' : 'Nuevo producto'}
       </h1>

@@ -119,7 +119,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-secondary/10 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[1800px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2">
           <Logo />
           <span className="text-lg font-bold uppercase tracking-widest text-secondary">

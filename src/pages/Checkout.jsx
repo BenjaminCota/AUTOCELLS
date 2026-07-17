@@ -217,7 +217,7 @@ export default function Checkout() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold text-secondary">Finalizar compra</h1>
       <p className="mt-2 max-w-prose text-muted">
         Confirma tus datos y recoge tu pedido en la tienda. El pago es en efectivo al recogerlo.
