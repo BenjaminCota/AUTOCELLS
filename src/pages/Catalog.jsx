@@ -201,8 +201,35 @@ export default function Catalog() {
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Catálogo</h1>
-      <p className="mt-1 text-muted">Explora por categoría o busca el equipo que necesitas.</p>
+      {/* Cabecera tipo barra de tienda: título a la izquierda y buscador a la
+          derecha (en vez de bandas apiladas de ancho completo). */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Catálogo</h1>
+          <p className="mt-1 text-muted">Explora por categoría o busca el equipo que necesitas.</p>
+        </div>
+        <div className="relative w-full lg:max-w-md">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nombre, marca o modelo…"
+            aria-label="Buscar productos"
+            className="w-full rounded-full border border-secondary/20 bg-white py-3 pl-12 pr-11 text-sm text-secondary shadow-sm placeholder:text-muted transition-[border-color,box-shadow] focus:border-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-dark/20 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {search && (
+            <button
+              type="button"
+              aria-label="Borrar búsqueda"
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted transition-colors hover:text-primary-dark"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Barra de categorías: navegación visible (además del panel "Filtrar").
           En móvil hace scroll horizontal; en desktop envuelve. */}
@@ -231,29 +258,6 @@ export default function Catalog() {
           );
         })}
       </nav>
-
-      {/* Buscador */}
-      <div className="relative mt-5">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Buscar por nombre, marca o modelo…"
-          aria-label="Buscar productos"
-          className="w-full rounded-card border border-secondary/15 bg-bg-alt py-3 pl-12 pr-11 text-sm text-secondary placeholder:text-muted transition-colors focus:border-primary-dark focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-dark/20 [&::-webkit-search-cancel-button]:hidden"
-        />
-        {search && (
-          <button
-            type="button"
-            aria-label="Borrar búsqueda"
-            onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted transition-colors hover:text-primary-dark"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
 
       {/* Barra de resultados: conteo + ordenamiento en la misma fila. */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

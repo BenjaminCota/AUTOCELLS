@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { MapPin, Phone, Clock, MessageCircle, Mail, ArrowUpRight } from 'lucide-react';
 import {
   STORE_ADDRESS,
@@ -47,6 +48,35 @@ const contactMethods = [
     href: STORE_INSTAGRAM_URL,
     Icon: InstagramIcon,
     external: true,
+  },
+];
+
+// Respuestas reales del modelo de la tienda (pedido web + pago al recoger,
+// garantía de lib/warranty.js, liberación el mismo día) — nada inventado.
+const faqs = [
+  {
+    q: '¿Puedo pagar en línea?',
+    a: 'No manejamos cobros en línea: tu pedido web aparta las piezas y pagas al recogerlas en la tienda.',
+  },
+  {
+    q: '¿Hacen envíos a domicilio?',
+    a: 'Por ahora la entrega es en la tienda, en San Luis Río Colorado. Te avisamos en cuanto tu pedido esté listo.',
+  },
+  {
+    q: '¿Los equipos tienen garantía?',
+    a: 'Los celulares incluyen 1 mes de garantía (iPhone 17: 2 meses). Fundas, cargadores y demás accesorios no manejan garantía.',
+  },
+  {
+    q: '¿Cuánto tarda la liberación por R-SIM?',
+    a: 'Queda el mismo día. Agenda tu cita en la página de Servicios y trae tu iPhone; la revisión no tiene costo.',
+  },
+  {
+    q: '¿Necesito una cuenta para comprar?',
+    a: 'Sí: creas tu cuenta, verificas tu correo y listo. El catálogo lo puedes explorar sin cuenta.',
+  },
+  {
+    q: '¿Venden equipos nuevos o seminuevos?',
+    a: 'Ambos. Cada producto dice claramente su estado: nuevo, seminuevo o usado como nuevo.',
   },
 ];
 
@@ -135,6 +165,44 @@ export default function Contact() {
           ))}
         </div>
       </div>
+
+      {/* Preguntas frecuentes: contenido útil real que además llena la página.
+          Lista editorial con divisores (sin rejilla de tarjetas idénticas). */}
+      <section className="mt-14">
+        <h2 className="text-2xl font-bold text-secondary">Preguntas frecuentes</h2>
+        <p className="mt-1 text-muted">Lo que más nos preguntan antes de comprar o agendar.</p>
+        <dl className="mt-6 grid gap-x-12 sm:grid-cols-2">
+          {faqs.map(({ q, a }) => (
+            <div key={q} className="border-t border-secondary/10 py-5">
+              <dt className="font-semibold text-secondary">{q}</dt>
+              <dd className="mt-1.5 text-sm leading-relaxed text-muted">{a}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* Cierre con acción: no dejar la página muriendo en la lista de FAQs. */}
+      <section className="mt-10 overflow-hidden rounded-card bg-gradient-to-br from-primary-dark to-primary-hover px-6 py-10 text-center text-white sm:px-12">
+        <h2 className="text-2xl font-bold sm:text-3xl">¿Listo para estrenar?</h2>
+        <p className="mx-auto mt-2 max-w-prose text-white/85">
+          Mira lo que tenemos disponible hoy, o agenda tu liberación por R-SIM y estrena compañía el
+          mismo día.
+        </p>
+        <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link
+            to="/catalogo"
+            className="rounded-card bg-white px-6 py-3 text-sm font-semibold text-primary-dark shadow-sm transition-transform duration-150 ease-snappy hover:-translate-y-0.5 active:scale-95"
+          >
+            Ver catálogo
+          </Link>
+          <Link
+            to="/servicios"
+            className="rounded-card border border-white/40 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+          >
+            Agendar liberación
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

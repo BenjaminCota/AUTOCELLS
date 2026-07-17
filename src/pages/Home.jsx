@@ -13,6 +13,7 @@ import {
   MapPin,
   Clock,
   MessageCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import { categories, categorySlug, useCatalog } from '../data/products';
 import ProductCard, { categoryIcons, priceFormatter } from '../components/ProductCard';
@@ -31,6 +32,9 @@ const categoryCards = categories.filter((category) => category !== 'Todos');
 
 // Actualizar estos ids cuando se capturen los productos reales en data/products.js.
 const featuredProductIds = ['iphone-15-128gb', 'iphone-14-128gb', 'funda-silicon-iphone-13', 'cargador-20w-anker'];
+
+// Lo que el cliente gana con la liberación (se pinta en el banner R-SIM).
+const rsimPerks = ['Desde $300', 'Listo el mismo día', 'Sin abrir tu equipo', 'Cualquier compañía'];
 
 // Modelo real de la tienda: pedido web + pago al recoger (no hay cobro en línea).
 const buySteps = [
@@ -193,30 +197,68 @@ export default function Home() {
         </div>
       </section>
 
-      {/* R-SIM destacado: panel de marca (color cian carga la sección) en vez
-          del ícono-en-círculo genérico. */}
+      {/* R-SIM destacado: banner con gradiente de marca, checklist de beneficios,
+          doble CTA y el celular en tarjeta blanca flotante (animación float-y). */}
       <section className="bg-white">
         <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
-          <div className="relative flex flex-col items-start gap-6 overflow-hidden rounded-card bg-primary-dark px-6 py-12 text-white sm:px-12 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative overflow-hidden rounded-card bg-gradient-to-br from-primary-dark to-primary-hover text-white">
             <Unlock
               className="pointer-events-none absolute -right-8 -top-8 h-52 w-52 text-white/10"
               strokeWidth={1}
               aria-hidden="true"
             />
-            <div className="relative max-w-xl">
-              <h2 className="text-2xl font-bold sm:text-3xl">Liberación por R-SIM desde $300</h2>
-              <p className="mt-3 text-white/85">
-                ¿Tu iPhone está bloqueado a una compañía? Lo liberamos el mismo día, con revisión sin
-                costo.
-              </p>
+            <div className="relative grid items-center gap-8 px-6 py-10 sm:px-12 lg:grid-cols-[1.25fr_0.75fr]">
+              <div>
+                <h2 className="text-2xl font-bold sm:text-3xl">
+                  ¿Tu iPhone está bloqueado? Lo liberamos hoy mismo
+                </h2>
+                <p className="mt-3 max-w-prose text-white/85">
+                  Con la liberación por R-SIM tu iPhone acepta el chip de cualquier compañía, en
+                  México o en el extranjero, sin abrirlo ni perder la garantía. La revisión y el
+                  diagnóstico no tienen costo.
+                </p>
+                <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-white/95">
+                  {rsimPerks.map((perk) => (
+                    <li key={perk} className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      {perk}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                  <Link
+                    to="/servicios"
+                    className="inline-flex items-center justify-center gap-2 rounded-card bg-white px-6 py-3.5 text-base font-semibold text-primary-dark shadow-sm transition-transform duration-150 ease-snappy hover:-translate-y-0.5 active:scale-95"
+                  >
+                    Conoce el servicio
+                    <ArrowRight className="h-5 w-5" />
+                  </Link>
+                  <a
+                    href={whatsappLink('Hola, quiero liberar mi iPhone por R-SIM.')}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-card border border-white/40 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/10"
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                    Escríbenos
+                  </a>
+                </div>
+              </div>
+              {/* El render trae fondo blanco: en tarjeta blanca inclinada se ve
+                  intencional sobre el cian, y la flotación le da vida. */}
+              <div className="relative hidden justify-center lg:flex">
+                <div className="animate-float">
+                  <div className="rotate-3 rounded-card bg-white p-5 shadow-2xl">
+                    <img
+                      src={`${import.meta.env.BASE_URL}images/categories/celulares.jpg`}
+                      alt="iPhone listo para usar con cualquier compañía"
+                      loading="lazy"
+                      className="h-56 w-56 object-contain"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <Link
-              to="/servicios"
-              className="relative inline-flex shrink-0 items-center gap-2 rounded-card bg-white px-6 py-3.5 text-base font-semibold text-primary-dark shadow-sm transition-transform duration-150 ease-snappy hover:-translate-y-0.5 active:scale-95"
-            >
-              Conoce el servicio
-              <ArrowRight className="h-5 w-5" />
-            </Link>
           </div>
         </div>
       </section>
@@ -225,9 +267,15 @@ export default function Home() {
       {featuredProducts.length > 0 && (
         <section className="bg-bg-alt">
           <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-secondary">Productos destacados</h2>
-              <Link to="/catalogo" className="text-sm font-semibold text-primary-dark hover:underline">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-secondary">Productos destacados</h2>
+                <p className="mt-1 text-sm text-muted">Lo más nuevo y lo más pedido de la tienda.</p>
+              </div>
+              <Link
+                to="/catalogo"
+                className="shrink-0 text-sm font-semibold text-primary-dark hover:underline"
+              >
                 Ver catálogo completo
               </Link>
             </div>
