@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Smartphone, Shield, BatteryCharging, Headphones, Layers, ShoppingCart, ShieldCheck, ShieldOff } from 'lucide-react';
 import Badge from './Badge';
 import { categorySlug, statusLabel } from '../data/products';
@@ -30,14 +30,23 @@ export default function ProductCard({ product }) {
     !isAgotado && typeof product.stockCount === 'number' && product.stockCount > 0 && product.stockCount <= 5;
   // null también para celulares marcados "sin garantía" — ahí se dice explícito.
   const warranty = warrantyLabel(product);
-  const { addItem } = useCart();
+  const { addItem, closeCart } = useCart();
   const toast = useToast();
+  const navigate = useNavigate();
 
   function handleQuickAdd() {
     // Variante por defecto (primera opción), igual que el estado inicial de
     // ProductDetail; addItem abre el drawer como confirmación.
     addItem(product, { storage: product.storage?.[0], color: product.colors?.[0] });
     toast.success(`${product.name} agregado al carrito.`);
+  }
+
+  function handleBuyNow() {
+    // Comprar = agregar y saltar directo al checkout. addItem abre el drawer;
+    // se cierra en el mismo handler para que no tape la página de compra.
+    addItem(product, { storage: product.storage?.[0], color: product.colors?.[0] });
+    closeCart();
+    navigate('/comprar');
   }
 
   const detailHref = `/catalogo/${categorySlug(product.category)}/${product.id}`;
@@ -70,14 +79,8 @@ export default function ProductCard({ product }) {
         )}
       </div>
 
-      {/* pr-14 deja sitio al botón flotante del carrito. */}
-      <div className="flex flex-1 flex-col border-t border-secondary/10 p-4 pr-14">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-          {/* Solo los celulares llevan marca (los del admin no la piden en otras categorías). */}
-          {product.category}
-          {product.brand ? ` · ${product.brand}` : ''}
-        </p>
-        <h3 className="mt-0.5 line-clamp-2 min-h-10 text-sm font-medium leading-snug text-secondary">
+      <div className="flex flex-1 flex-col border-t border-secondary/10 p-4">
+        <h3 className="line-clamp-2 min-h-12 text-lg font-semibold leading-tight text-secondary">
           <Link
             to={detailHref}
             className="transition-colors after:absolute after:inset-0 group-hover:text-primary-dark"
@@ -102,7 +105,7 @@ export default function ProductCard({ product }) {
             )}
           </p>
         )}
-        <p className="mt-auto pt-1.5 text-xs font-semibold">
+        <p className="mt-1.5 text-xs font-semibold">
           {isAgotado ? (
             <span className="text-muted">Sin existencias</span>
           ) : lowStock ? (
@@ -111,18 +114,29 @@ export default function ProductCard({ product }) {
             <span className="text-success-dark">Disponible</span>
           )}
         </p>
-      </div>
 
-      <button
-        type="button"
-        disabled={isAgotado}
-        onClick={handleQuickAdd}
-        aria-label={`Agregar ${product.name} al carrito`}
-        title="Agregar al carrito"
-        className="absolute bottom-3.5 right-3.5 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-secondary/15 bg-white text-primary-dark shadow-sm transition-[background-color,color,transform,border-color] duration-150 ease-snappy enabled:hover:border-primary-dark enabled:hover:bg-primary-dark enabled:hover:text-white enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        <ShoppingCart className="h-5 w-5" />
-      </button>
+        {/* z-10: los botones quedan por encima del enlace estirado del nombre. */}
+        <div className="relative z-10 mt-auto flex items-center gap-2 pt-3">
+          <button
+            type="button"
+            disabled={isAgotado}
+            onClick={handleBuyNow}
+            className="flex-1 rounded-card bg-primary-dark px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-snappy enabled:hover:bg-primary-hover enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Comprar
+          </button>
+          <button
+            type="button"
+            disabled={isAgotado}
+            onClick={handleQuickAdd}
+            aria-label={`Agregar ${product.name} al carrito`}
+            title="Agregar al carrito"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-secondary/15 bg-white text-primary-dark shadow-sm transition-[background-color,color,transform,border-color] duration-150 ease-snappy enabled:hover:border-primary-dark enabled:hover:bg-primary-dark enabled:hover:text-white enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ShoppingCart className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
