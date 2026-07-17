@@ -44,7 +44,7 @@ export default function Home() {
     <div>
       {/* Hero */}
       <section className="bg-white">
-        <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
           <div>
             <h1 className="animate-hero-in text-3xl font-bold text-secondary sm:text-4xl lg:text-5xl">
               iPhones al mejor precio en San Luis Río Colorado
@@ -76,18 +76,21 @@ export default function Home() {
           {pinned ? (
             <Link
               to={`/catalogo/${categorySlug(pinned.category)}/${pinned.id}`}
-              className="group animate-hero-in-image relative flex aspect-square items-center justify-center overflow-hidden rounded-card bg-bg-alt [animation-delay:90ms]"
+              // Fondo blanco: las fotos de producto traen fondo blanco y así se
+              // funden con el panel (sin marco gris alrededor); el borde marca
+              // el límite. Padding mínimo para que la foto se vea grande.
+              className="group animate-hero-in-image relative flex aspect-square items-center justify-center overflow-hidden rounded-card border border-secondary/10 bg-white [animation-delay:90ms]"
             >
               {pinned.image ? (
                 <img
                   src={pinned.image}
                   alt={pinned.name}
-                  className="h-full w-full object-contain p-12 pb-24 transition-transform duration-200 ease-snappy group-hover:scale-[1.03]"
+                  className="h-full w-full object-contain p-2 pb-16 transition-transform duration-200 ease-snappy group-hover:scale-[1.03]"
                 />
               ) : (
                 <PinnedIcon className="h-32 w-32 text-primary-dark" strokeWidth={1.25} />
               )}
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-white/85 px-6 py-4 backdrop-blur-sm">
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 border-t border-secondary/10 bg-white/85 px-6 py-4 backdrop-blur-sm">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-muted">Producto destacado</p>
                   <p className="font-semibold text-secondary group-hover:text-primary-dark">{pinned.name}</p>
@@ -103,13 +106,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Categorías al estilo Apple Store: visual centrado + etiqueta debajo,
-          sin tarjetas ni bordes; los ítems flotan sobre la banda gris. En móvil
-          la fila hace scroll horizontal; en desktop se reparte a lo ancho. */}
-      <section className="bg-bg-alt">
-        <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8">
+      {/* Categorías al estilo Apple Store: foto de producto grande + etiqueta,
+          sin tarjetas ni recuadros. Las fotos (public/images/categories/
+          <slug>.jpg) traen fondo blanco, por eso la sección es blanca: se
+          funden con ella y "flotan". En móvil la fila hace scroll horizontal;
+          en desktop se reparte a lo ancho. */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
           <h2 className="text-center text-2xl font-bold text-secondary sm:text-3xl">Explora por categoría</h2>
-          <div className="-mx-4 mt-10 flex gap-8 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:overflow-visible sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-4 mt-6 flex gap-6 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:overflow-visible sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categoryCards.map((category, index) => {
               const Icon = categoryIcons[category];
               const image = `${import.meta.env.BASE_URL}images/categories/${categorySlug(category)}.jpg`;
@@ -118,13 +123,11 @@ export default function Home() {
                   key={category}
                   to={`/catalogo?categoria=${encodeURIComponent(category)}`}
                   style={{ animationDelay: `${index * 60}ms` }}
-                  className="group animate-rise-in flex w-24 shrink-0 flex-col items-center gap-4 rounded-card py-2 sm:w-auto sm:flex-1"
+                  className="group animate-rise-in flex w-28 shrink-0 flex-col items-center gap-2 sm:w-auto sm:flex-1"
                 >
-                  <span className="flex h-24 items-center justify-center transition-transform duration-200 ease-snappy group-hover:-translate-y-1.5">
-                    {/* Foto real de la categoría (public/images/categories/<slug>.jpg,
-                        Unsplash, recorte cuadrado) en círculo — las fotos traen fondo
-                        propio, así que el círculo las integra a la banda gris. Si el
-                        archivo faltara, cae al ícono de categoría. */}
+                  <span className="flex items-center justify-center transition-transform duration-200 ease-snappy group-hover:-translate-y-1.5">
+                    {/* Cuadrada y sin adornos; si el archivo faltara, cae al
+                        ícono de categoría. */}
                     <img
                       src={image}
                       alt=""
@@ -132,7 +135,7 @@ export default function Home() {
                       loading="lazy"
                       width="480"
                       height="480"
-                      className="h-24 w-24 rounded-full object-cover shadow-[0_10px_24px_-12px_rgba(88,89,91,0.5)] ring-1 ring-secondary/10 transition-shadow duration-200 ease-snappy group-hover:shadow-[0_16px_32px_-14px_rgba(14,116,144,0.55)]"
+                      className="h-28 w-28 object-contain sm:h-40 sm:w-40"
                       onError={(event) => {
                         event.currentTarget.style.display = 'none';
                         event.currentTarget.nextElementSibling?.removeAttribute('hidden');
@@ -153,7 +156,7 @@ export default function Home() {
       {/* R-SIM destacado: panel de marca (color cian carga la sección) en vez
           del ícono-en-círculo genérico. */}
       <section className="bg-white">
-        <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
           <div className="relative flex flex-col items-start gap-6 overflow-hidden rounded-card bg-primary-dark px-6 py-12 text-white sm:px-12 lg:flex-row lg:items-center lg:justify-between">
             <Unlock
               className="pointer-events-none absolute -right-8 -top-8 h-52 w-52 text-white/10"
@@ -181,7 +184,7 @@ export default function Home() {
       {/* Productos destacados — se oculta mientras el catálogo esté vacío */}
       {featuredProducts.length > 0 && (
         <section className="bg-bg-alt">
-          <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-secondary">Productos destacados</h2>
               <Link to="/catalogo" className="text-sm font-semibold text-primary-dark hover:underline">
@@ -201,7 +204,7 @@ export default function Home() {
 
       {/* Banner de confianza */}
       <section className="bg-white">
-        <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-16 sm:grid-cols-3 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-10 sm:grid-cols-3 sm:px-6 lg:px-8">
           {trustPoints.map(({ icon: Icon, title, description }) => (
             <div key={title} className="flex flex-col items-center gap-2 text-center">
               <Icon className="h-8 w-8 text-primary-dark" strokeWidth={1.5} />
