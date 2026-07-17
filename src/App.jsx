@@ -44,6 +44,9 @@ export default function App() {
         <Route element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="catalogo" element={<Catalog />} />
+          {/* Ruta real para la miga intermedia del breadcrumb del detalle
+              (/catalogo/celulares): catálogo con la categoría preseleccionada. */}
+          <Route path="catalogo/:category" element={<Catalog />} />
           <Route path="catalogo/:category/:productId" element={<ProductDetail />} />
           <Route path="servicios" element={<Services />} />
           <Route path="contacto" element={<Contact />} />
@@ -62,6 +65,9 @@ export default function App() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="productos" element={<AdminProducts />} />
             <Route path="productos/nuevo" element={<AdminProductForm />} />
+            {/* La miga intermedia del breadcrumb (/admin/productos/<id>) no
+                tiene página propia: manda a la edición del producto. */}
+            <Route path="productos/:productId" element={<Navigate to="editar" replace />} />
             <Route path="productos/:productId/editar" element={<AdminProductForm />} />
             <Route path="pedidos" element={<AdminOrders />} />
             <Route path="servicios" element={<AdminServices />} />

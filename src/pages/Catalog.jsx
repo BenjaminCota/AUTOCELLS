@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Search, X, SearchX, LayoutGrid } from 'lucide-react';
-import { categories, priceRanges, productStatuses, useCatalog } from '../data/products';
+import { categories, categorySlug, priceRanges, productStatuses, useCatalog } from '../data/products';
 import ProductCard, { categoryIcons } from '../components/ProductCard';
 import CatalogFilters from '../components/CatalogFilters';
 
@@ -38,15 +38,23 @@ function normalize(text) {
 
 export default function Catalog() {
   const { products } = useCatalog();
+  // La categoría inicial puede venir del path (/catalogo/celulares, como
+  // enlaza el breadcrumb del detalle de producto) o del query
+  // (?categoria=Celulares, como enlazan los tiles del inicio). Basta leerla
+  // al montar: MainLayout remonta la página en cada navegación.
+  const { category: categoryParam } = useParams();
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('recientes');
 
   const [filters, setFilters] = useState(() => {
+    const fromPath = categories.find((category) => categorySlug(category) === categoryParam);
     const requestedCategory = searchParams.get('categoria');
     return {
       ...defaultFilters,
-      category: categories.includes(requestedCategory) ? requestedCategory : defaultFilters.category,
+      category:
+        fromPath ??
+        (categories.includes(requestedCategory) ? requestedCategory : defaultFilters.category),
     };
   });
 
