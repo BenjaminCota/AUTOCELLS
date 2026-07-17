@@ -112,7 +112,7 @@ export default function Home() {
           <div className="-mx-4 mt-10 flex gap-8 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:overflow-visible sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categoryCards.map((category, index) => {
               const Icon = categoryIcons[category];
-              const image = `${import.meta.env.BASE_URL}images/categories/${categorySlug(category)}.svg`;
+              const image = `${import.meta.env.BASE_URL}images/categories/${categorySlug(category)}.jpg`;
               return (
                 <Link
                   key={category}
@@ -121,14 +121,18 @@ export default function Home() {
                   className="group animate-rise-in flex w-24 shrink-0 flex-col items-center gap-4 rounded-card py-2 sm:w-auto sm:flex-1"
                 >
                   <span className="flex h-24 items-center justify-center transition-transform duration-200 ease-snappy group-hover:-translate-y-1.5">
-                    {/* Ilustración de la categoría (public/images/categories/).
-                        Si algún día falta el archivo, cae al ícono de categoría. */}
+                    {/* Foto real de la categoría (public/images/categories/<slug>.jpg,
+                        Unsplash, recorte cuadrado) en círculo — las fotos traen fondo
+                        propio, así que el círculo las integra a la banda gris. Si el
+                        archivo faltara, cae al ícono de categoría. */}
                     <img
                       src={image}
                       alt=""
                       aria-hidden="true"
                       loading="lazy"
-                      className="h-20 w-20 object-contain"
+                      width="480"
+                      height="480"
+                      className="h-24 w-24 rounded-full object-cover shadow-[0_10px_24px_-12px_rgba(88,89,91,0.5)] ring-1 ring-secondary/10 transition-shadow duration-200 ease-snappy group-hover:shadow-[0_16px_32px_-14px_rgba(14,116,144,0.55)]"
                       onError={(event) => {
                         event.currentTarget.style.display = 'none';
                         event.currentTarget.nextElementSibling?.removeAttribute('hidden');
