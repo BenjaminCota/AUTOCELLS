@@ -518,7 +518,7 @@ export default function Services() {
     <div>
       {/* Hero */}
       <section className="bg-white">
-        <div className="mx-auto grid max-w-[1800px] gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_1fr] lg:items-center lg:px-8">
           <div>
             <h1 className="text-3xl font-bold text-secondary sm:text-4xl lg:text-5xl">
               Liberación de celulares por R-SIM
@@ -585,7 +585,7 @@ export default function Services() {
 
       {/* Qué es — panel con gradiente azul, foto real del chip y beneficios. */}
       <section className="bg-gradient-to-br from-primary-dark to-primary-hover text-white">
-        <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:px-8">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-2 lg:px-8">
           <div className="overflow-hidden rounded-card bg-white/10 shadow-lg ring-1 ring-white/15">
             <img
               src={SERVICE_IMAGE}
@@ -621,9 +621,9 @@ export default function Services() {
       {/* Compatibilidad — checklist en dos columnas para llenar el ancho y no
           dejar tanto vacío a los lados. */}
       <section className="bg-bg-alt">
-        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6 lg:px-8">
           <h2 className="text-center text-2xl font-bold text-secondary">Compatibilidad</h2>
-          <ul className="mx-auto mt-8 grid max-w-4xl gap-3 sm:grid-cols-2">
+          <ul className="mx-auto mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">
             {compatibility.map((item) => (
               <li
                 key={item}
@@ -640,7 +640,7 @@ export default function Services() {
       {/* Proceso — los 3 pasos conectados con una línea horizontal (en desktop)
           para que se lea como una secuencia, no como íconos sueltos. */}
       <section className="bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
           <h2 className="text-center text-2xl font-bold text-secondary">Cómo funciona</h2>
           <div className="relative mt-10 grid gap-8 sm:grid-cols-3">
             {/* Línea conectora entre los centros del primer y último ícono. */}
@@ -669,7 +669,7 @@ export default function Services() {
           el MISMO calendario compartido. */}
       {otherServices.length > 0 && (
         <section className="bg-bg-alt">
-          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
             <h2 className="text-center text-2xl font-bold text-secondary">Otros servicios</h2>
             <p className="mt-2 text-center text-muted">
               Además de la liberación por R-SIM, en AUTOCELLS también te ofrecemos:
@@ -705,7 +705,7 @@ export default function Services() {
       {/* CTA final de cierre de venta: gradiente cian (distinto del footer
           oscuro) con acción principal (agendar) y secundaria (WhatsApp). */}
       <section className="bg-gradient-to-br from-primary-dark to-primary-hover">
-        <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 py-16 text-center sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-white sm:text-3xl lg:text-4xl">
             ¿Listo para liberar tu iPhone?
           </h2>

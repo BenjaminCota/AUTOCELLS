@@ -21,7 +21,7 @@ const secondaryLinks = [
 export default function Footer() {
   return (
     <footer className="bg-secondary text-white">
-      <div className="mx-auto max-w-[1800px] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
         {/* Fila 1: marca · navegación · redes (horizontal en desktop para que
             el footer no crezca a lo alto). */}
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
