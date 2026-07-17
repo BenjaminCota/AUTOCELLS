@@ -26,6 +26,14 @@ function slideDirection(from, to) {
   return depth(to) >= depth(from) ? 'right' : 'left';
 }
 
+// Cambiar de categoría en el catálogo actualiza la URL (/catalogo/:categoria)
+// pero es un filtro dentro de la misma página: /catalogo y /catalogo/<cat>
+// comparten key para no remontar <main> ni repetir la animación de entrada.
+// El detalle de producto (/catalogo/<cat>/<id>, 3 segmentos) sí es página nueva.
+function pageKey(pathname) {
+  return /^\/catalogo\/[^/]+$/.test(pathname) ? '/catalogo' : pathname;
+}
+
 // Breadcrumb se omite en Home según el brief de diseño.
 export default function MainLayout() {
   const { pathname } = useLocation();
@@ -33,7 +41,12 @@ export default function MainLayout() {
 
   // La ruta anterior se recuerda en un ref para calcular la dirección durante el render.
   const previousPathnameRef = useRef(pathname);
-  const direction = slideDirection(previousPathnameRef.current, pathname);
+  // Misma key = mismo <main>: sin dirección, para no re-disparar la animación
+  // cambiando la clase (de -left a -right) sobre el elemento ya montado.
+  const direction =
+    pageKey(previousPathnameRef.current) === pageKey(pathname)
+      ? null
+      : slideDirection(previousPathnameRef.current, pathname);
 
   useEffect(() => {
     previousPathnameRef.current = pathname;
@@ -48,8 +61,8 @@ export default function MainLayout() {
     <div className="flex min-h-screen flex-col">
       <Header />
       {!isHome && <Breadcrumb />}
-      {/* key={pathname} remonta el <main> en cada navegación para que la animación se reproduzca. */}
-      <main key={pathname} className={`flex-1 ${animationClass}`}>
+      {/* key remonta el <main> en cada navegación para que la animación se reproduzca. */}
+      <main key={pageKey(pathname)} className={`flex-1 ${animationClass}`}>
         <Outlet />
       </main>
       <Footer />

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Search, X, SearchX, LayoutGrid } from 'lucide-react';
 import { categories, categorySlug, priceRanges, productStatuses, useCatalog } from '../data/products';
 import ProductCard, { categoryIcons } from '../components/ProductCard';
@@ -44,6 +44,7 @@ export default function Catalog() {
   // al montar: MainLayout remonta la página en cada navegación.
   const { category: categoryParam } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('recientes');
 
@@ -57,6 +58,24 @@ export default function Catalog() {
         (categories.includes(requestedCategory) ? requestedCategory : defaultFilters.category),
     };
   });
+
+  // La URL también puede cambiar SIN remontar la página (MainLayout comparte
+  // key en /catalogo/*): botón atrás/adelante o la miga "Catálogo". Aquí se
+  // sincroniza el filtro; los cambios por chip pasan por handleFilterChange
+  // (que navega él mismo) y dejan este efecto como no-op.
+  useEffect(() => {
+    const fromPath = categories.find((category) => categorySlug(category) === categoryParam);
+    const requestedCategory = searchParams.get('categoria');
+    const target =
+      fromPath ??
+      (categories.includes(requestedCategory) ? requestedCategory : defaultFilters.category);
+    setFilters((prev) =>
+      prev.category === target
+        ? prev
+        : // Los filtros contextuales de la categoría anterior ya no aplican.
+          { ...defaultFilters, status: prev.status, price: prev.price, category: target },
+    );
+  }, [categoryParam, searchParams]);
 
   const hasActiveFilters = Object.keys(defaultFilters).some(
     (key) => filters[key] !== defaultFilters[key],
@@ -123,16 +142,28 @@ export default function Catalog() {
   }, [filteredProducts, sort]);
 
   function handleFilterChange(key, value) {
-    setFilters((prev) =>
-      key === 'category'
-        ? // Los filtros contextuales de la categoría anterior ya no aplican.
-          { ...defaultFilters, status: prev.status, price: prev.price, category: value }
-        : { ...prev, [key]: value },
-    );
+    if (key === 'category') {
+      // La categoría vive en la URL (/catalogo/<slug>) para que breadcrumb,
+      // historial y enlaces compartidos coincidan con lo que se ve. replace:
+      // cambiar de chip no debe llenar el historial.
+      navigate(value === 'Todos' ? '/catalogo' : `/catalogo/${categorySlug(value)}`, {
+        replace: true,
+      });
+      // Los filtros contextuales de la categoría anterior ya no aplican.
+      setFilters((prev) => ({ ...defaultFilters, status: prev.status, price: prev.price, category: value }));
+      return;
+    }
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // Volver a 'Todos' implica también salir de /catalogo/<categoria>.
+  function clearFilters() {
+    navigate('/catalogo', { replace: true });
+    setFilters(defaultFilters);
   }
 
   function clearAll() {
-    setFilters(defaultFilters);
+    clearFilters();
     setSearch('');
   }
 
@@ -218,7 +249,7 @@ export default function Catalog() {
         <CatalogFilters
           filters={filters}
           onChange={handleFilterChange}
-          onReset={() => setFilters(defaultFilters)}
+          onReset={clearFilters}
           hasActiveFilters={hasActiveFilters}
         />
       </div>
