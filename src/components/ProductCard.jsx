@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Smartphone, Shield, BatteryCharging, Headphones, Layers, ShoppingCart, ShieldCheck, ShieldOff, ArrowRight } from 'lucide-react';
+import { Smartphone, Shield, BatteryCharging, Headphones, Layers, ShoppingCart, ShieldCheck, ShieldOff } from 'lucide-react';
 import Badge from './Badge';
 import { categorySlug, statusLabel } from '../data/products';
 import { useCart } from '../context/CartContext';
@@ -43,22 +43,22 @@ export default function ProductCard({ product }) {
   const detailHref = `/catalogo/${categorySlug(product.category)}/${product.id}`;
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-card border border-secondary/10 bg-white transition-[transform,border-color,box-shadow] duration-200 ease-snappy hover:-translate-y-1 hover:border-primary-dark/25 hover:shadow-[0_18px_38px_-20px_rgba(14,116,144,0.45)]">
-      <Link
-        to={detailHref}
-        aria-label={`Ver ${product.name}`}
-        className="relative flex aspect-square items-center justify-center overflow-hidden bg-gradient-to-b from-bg-alt to-white"
-      >
+    // Tarjeta estilo Mercado Libre: TODA la tarjeta navega al detalle (enlace
+    // "estirado" con after:inset-0 en el nombre — así el HTML sigue siendo
+    // válido, sin botones dentro de un <a>). El carrito es un botón flotante
+    // compacto que queda encima del enlace con z-10.
+    <div className="group relative flex h-full flex-col overflow-hidden rounded-card border border-secondary/10 bg-white transition-[border-color,box-shadow] duration-200 ease-snappy hover:border-secondary/25 hover:shadow-[0_16px_36px_-18px_rgba(88,89,91,0.5)]">
+      <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-white">
         {product.image ? (
           <img
             src={product.image}
             alt={product.name}
             loading="lazy"
-            className="h-full w-full object-contain p-4 transition-transform duration-300 ease-snappy group-hover:scale-105"
+            className="h-full w-full object-contain p-3 transition-transform duration-300 ease-snappy group-hover:scale-[1.04]"
           />
         ) : (
           // Fallback para productos sin imagen (ej. los creados desde el admin).
-          <Icon className="h-16 w-16 text-secondary/25 transition-transform duration-300 ease-snappy group-hover:scale-105" strokeWidth={1.5} />
+          <Icon className="h-16 w-16 text-secondary/25 transition-transform duration-300 ease-snappy group-hover:scale-[1.04]" strokeWidth={1.5} />
         )}
         <div className="absolute left-3 top-3">
           <Badge variant={product.status}>{statusLabel(product.status)}</Badge>
@@ -68,68 +68,61 @@ export default function ProductCard({ product }) {
             <Badge variant="agotado">Agotado</Badge>
           </div>
         )}
-      </Link>
+      </div>
 
-      <div className="flex flex-1 flex-col p-4">
+      {/* pr-14 deja sitio al botón flotante del carrito. */}
+      <div className="flex flex-1 flex-col border-t border-secondary/10 p-4 pr-14">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
           {/* Solo los celulares llevan marca (los del admin no la piden en otras categorías). */}
           {product.category}
           {product.brand ? ` · ${product.brand}` : ''}
         </p>
-        <h3 className="mt-1 font-semibold leading-snug text-secondary">
-          <Link to={detailHref} className="transition-colors group-hover:text-primary-dark">
+        <h3 className="mt-0.5 line-clamp-2 min-h-10 text-sm font-medium leading-snug text-secondary">
+          <Link
+            to={detailHref}
+            className="transition-colors after:absolute after:inset-0 group-hover:text-primary-dark"
+          >
             {product.name}
           </Link>
         </h3>
+        <p className="mt-1.5 text-2xl font-bold text-secondary">{priceFormatter.format(product.price)}</p>
+        {/* Línea verde tipo "Envío gratis" de ML: aquí es la garantía real. */}
         {product.category === 'Celulares' && (
-          <p className="mt-1.5 flex items-center gap-1 text-xs text-muted">
+          <p className="mt-1.5 flex items-center gap-1 text-xs font-medium">
             {warranty ? (
-              <ShieldCheck className="h-3.5 w-3.5 text-success-dark" />
+              <>
+                <ShieldCheck className="h-3.5 w-3.5 text-success-dark" />
+                <span className="text-success-dark">{warranty}</span>
+              </>
             ) : (
-              <ShieldOff className="h-3.5 w-3.5" />
+              <>
+                <ShieldOff className="h-3.5 w-3.5 text-muted" />
+                <span className="text-muted">Sin garantía</span>
+              </>
             )}
-            {warranty ?? 'Sin garantía'}
           </p>
         )}
-
-        <div className="mt-auto pt-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xl font-bold text-secondary">{priceFormatter.format(product.price)}</p>
-            {/* Disponibilidad: agotado / pocas piezas (urgencia) / disponible. */}
-            {isAgotado ? (
-              <span className="text-xs font-semibold text-muted">Sin existencias</span>
-            ) : lowStock ? (
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-danger-dark">
-                <span className="h-1.5 w-1.5 rounded-full bg-danger-dark" />
-                Quedan {product.stockCount}
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-success-dark">
-                <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                Disponible
-              </span>
-            )}
-          </div>
-
-          <button
-            type="button"
-            disabled={isAgotado}
-            onClick={handleQuickAdd}
-            aria-label={`Agregar ${product.name} al carrito`}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-card bg-primary-dark px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-snappy enabled:hover:bg-primary-hover enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            {isAgotado ? 'Agotado' : 'Agregar al carrito'}
-          </button>
-          <Link
-            to={detailHref}
-            className="group/ver mt-2 flex w-full items-center justify-center gap-1.5 rounded-card border border-secondary/20 px-4 py-2 text-sm font-semibold text-secondary transition-colors hover:border-primary-dark hover:text-primary-dark"
-          >
-            Ver detalles
-            <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-snappy group-hover/ver:translate-x-1" />
-          </Link>
-        </div>
+        <p className="mt-auto pt-1.5 text-xs font-semibold">
+          {isAgotado ? (
+            <span className="text-muted">Sin existencias</span>
+          ) : lowStock ? (
+            <span className="text-danger-dark">Quedan {product.stockCount}</span>
+          ) : (
+            <span className="text-success-dark">Disponible</span>
+          )}
+        </p>
       </div>
+
+      <button
+        type="button"
+        disabled={isAgotado}
+        onClick={handleQuickAdd}
+        aria-label={`Agregar ${product.name} al carrito`}
+        title="Agregar al carrito"
+        className="absolute bottom-3.5 right-3.5 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-secondary/15 bg-white text-primary-dark shadow-sm transition-[background-color,color,transform,border-color] duration-150 ease-snappy enabled:hover:border-primary-dark enabled:hover:bg-primary-dark enabled:hover:text-white enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <ShoppingCart className="h-5 w-5" />
+      </button>
     </div>
   );
 }

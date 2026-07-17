@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Search, X, SearchX, LayoutGrid } from 'lucide-react';
+import { Search, X, SearchX, LayoutGrid, ChevronLeft, ChevronRight } from 'lucide-react';
 import { categories, categorySlug, priceRanges, productStatuses, useCatalog } from '../data/products';
 import ProductCard, { categoryIcons } from '../components/ProductCard';
 import CatalogFilters from '../components/CatalogFilters';
@@ -27,6 +27,21 @@ const defaultFilters = {
   protectorType: 'Todos',
   privacy: 'Todos',
 };
+
+// Productos por página (20 = divisible entre las 2/4/5 columnas de la rejilla).
+const PAGE_SIZE = 20;
+
+// Números de página a mostrar: todos si son pocos; si no, la primera, una
+// ventana alrededor de la actual y la última, con "…" en los huecos.
+function pageList(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = [1];
+  if (current > 3) pages.push('…');
+  for (let n = Math.max(2, current - 1); n <= Math.min(total - 1, current + 1); n += 1) pages.push(n);
+  if (current < total - 2) pages.push('…');
+  pages.push(total);
+  return pages;
+}
 
 // Sin acentos y en minúsculas, para que "silicon" también encuentre "silicón".
 function normalize(text) {
@@ -140,6 +155,23 @@ export default function Catalog() {
         return list;
     }
   }, [filteredProducts, sort]);
+
+  // Paginación: cualquier cambio de filtros/búsqueda/orden regresa a la
+  // página 1 (los resultados son otros). currentPage se recorta por si los
+  // resultados encogen mientras se está en una página alta.
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    setPage(1);
+  }, [filters, search, sort]);
+  const pageCount = Math.max(1, Math.ceil(sortedProducts.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pagedProducts = sortedProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  function goToPage(next) {
+    setPage(next);
+    // La página nueva se lee desde arriba, como una navegación real.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   function handleFilterChange(key, value) {
     if (key === 'category') {
@@ -258,19 +290,67 @@ export default function Catalog() {
       <h2 className="sr-only">Resultados</h2>
 
       {sortedProducts.length > 0 ? (
-        <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
-          {sortedProducts.map((product, index) => (
-            // Entrada escalonada, con tope de delay para que los productos de
-            // más abajo no aparezcan con retraso perceptible.
-            <div
-              key={product.id}
-              className="animate-rise-in"
-              style={{ animationDelay: `${Math.min(index, 7) * 55}ms` }}
-            >
-              <ProductCard product={product} />
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-3 lg:grid-cols-4 lg:gap-6 xl:grid-cols-5">
+            {pagedProducts.map((product, index) => (
+              // Entrada escalonada, con tope de delay para que los productos de
+              // más abajo no aparezcan con retraso perceptible.
+              <div
+                key={product.id}
+                className="animate-rise-in"
+                style={{ animationDelay: `${Math.min(index, 7) * 55}ms` }}
+              >
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+
+          {pageCount > 1 && (
+            <nav aria-label="Páginas del catálogo" className="mt-10 flex flex-wrap items-center justify-center gap-1.5">
+              {currentPage > 1 && (
+                <button
+                  type="button"
+                  onClick={() => goToPage(currentPage - 1)}
+                  className="mr-1 flex items-center gap-1 rounded-card px-2 py-2 text-sm font-medium text-secondary transition-colors hover:text-primary-dark"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </button>
+              )}
+              {pageList(currentPage, pageCount).map((item, index) =>
+                item === '…' ? (
+                  <span key={`gap-${index}`} className="px-1 text-muted">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => goToPage(item)}
+                    aria-current={item === currentPage ? 'page' : undefined}
+                    className={`flex h-9 min-w-9 items-center justify-center rounded-card px-2 text-sm font-semibold transition-colors ${
+                      item === currentPage
+                        ? 'border-2 border-primary-dark bg-white text-secondary'
+                        : 'text-muted hover:text-primary-dark'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ),
+              )}
+              {currentPage < pageCount && (
+                <button
+                  type="button"
+                  onClick={() => goToPage(currentPage + 1)}
+                  className="ml-1 flex items-center gap-1 rounded-card px-2 py-2 text-sm font-medium text-secondary transition-colors hover:text-primary-dark"
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
+            </nav>
+          )}
+        </>
       ) : (
         <div className="flex flex-col items-center gap-4 rounded-card border border-dashed border-secondary/20 bg-bg-alt/60 py-16 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-primary-dark shadow-sm">
