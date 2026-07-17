@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Smartphone, Shield, BatteryCharging, Headphones, Layers, ShoppingCart, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Smartphone, Shield, BatteryCharging, Headphones, Layers, ShoppingCart, ShoppingBag, ShieldCheck, ShieldOff } from 'lucide-react';
 import Badge from './Badge';
 import { categorySlug, statusLabel } from '../data/products';
 import { useCart } from '../context/CartContext';
@@ -80,7 +80,7 @@ export default function ProductCard({ product }) {
       </div>
 
       <div className="flex flex-1 flex-col border-t border-secondary/10 p-4">
-        <h3 className="line-clamp-2 min-h-12 text-lg font-semibold leading-tight text-secondary">
+        <h3 className="line-clamp-2 min-h-10 text-base font-medium leading-snug text-secondary">
           <Link
             to={detailHref}
             className="transition-colors after:absolute after:inset-0 group-hover:text-primary-dark"
@@ -88,7 +88,10 @@ export default function ProductCard({ product }) {
             {product.name}
           </Link>
         </h3>
-        <p className="mt-1.5 text-2xl font-bold text-secondary">{priceFormatter.format(product.price)}</p>
+        {/* Peso medio (no bold): el precio destaca por tamaño, sin verse pesado. */}
+        <p className="mt-1.5 text-2xl font-medium tracking-tight text-secondary">
+          {priceFormatter.format(product.price)}
+        </p>
         {/* Línea verde tipo "Envío gratis" de ML: aquí es la garantía real. */}
         {product.category === 'Celulares' && (
           <p className="mt-1.5 flex items-center gap-1 text-xs font-medium">
@@ -116,14 +119,15 @@ export default function ProductCard({ product }) {
         </p>
 
         {/* z-10: los botones quedan por encima del enlace estirado del nombre. */}
-        <div className="relative z-10 mt-auto flex items-center gap-2 pt-3">
+        <div className="relative z-10 mt-auto flex items-stretch gap-2 pt-3">
           <button
             type="button"
             disabled={isAgotado}
             onClick={handleBuyNow}
-            className="flex-1 rounded-card bg-primary-dark px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,transform] duration-150 ease-snappy enabled:hover:bg-primary-hover enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex flex-1 items-center justify-center gap-2 rounded-card bg-primary-dark px-4 py-3 text-sm font-semibold text-white shadow-sm transition-[background-color,transform,box-shadow] duration-150 ease-snappy enabled:hover:-translate-y-0.5 enabled:hover:bg-primary-hover enabled:hover:shadow-md enabled:active:translate-y-0 enabled:active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Comprar
+            <ShoppingBag className="h-4 w-4" />
+            {isAgotado ? 'Agotado' : 'Comprar'}
           </button>
           <button
             type="button"
@@ -131,7 +135,7 @@ export default function ProductCard({ product }) {
             onClick={handleQuickAdd}
             aria-label={`Agregar ${product.name} al carrito`}
             title="Agregar al carrito"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-secondary/15 bg-white text-primary-dark shadow-sm transition-[background-color,color,transform,border-color] duration-150 ease-snappy enabled:hover:border-primary-dark enabled:hover:bg-primary-dark enabled:hover:text-white enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex w-12 shrink-0 items-center justify-center rounded-card border border-secondary/20 bg-white text-primary-dark transition-[background-color,color,border-color] duration-150 ease-snappy enabled:hover:border-primary-dark enabled:hover:bg-primary-dark enabled:hover:text-white enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ShoppingCart className="h-5 w-5" />
           </button>

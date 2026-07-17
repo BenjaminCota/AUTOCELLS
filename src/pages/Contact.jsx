@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Phone, Clock, MessageCircle, Mail, ArrowUpRight } from 'lucide-react';
+import { MapPin, Phone, Clock, Mail, ArrowUpRight } from 'lucide-react';
 import {
   STORE_ADDRESS,
   STORE_HOURS_LINES,
@@ -11,7 +11,7 @@ import {
   STORE_INSTAGRAM_URL,
   whatsappLink,
 } from '../data/store';
-import { FacebookIcon, InstagramIcon } from '../components/SocialIcons';
+import { FacebookIcon, InstagramIcon, WhatsAppIcon } from '../components/SocialIcons';
 
 // Métodos de contacto directos. `accent` resalta el preferido (WhatsApp) y
 // `external` decide si el enlace abre en pestaña nueva (mailto no).
@@ -21,7 +21,7 @@ const contactMethods = [
     value: STORE_PHONE_DISPLAY,
     description: 'La vía más rápida, en horario de tienda.',
     href: whatsappLink('Hola, tengo una pregunta sobre AUTOCELLS.'),
-    Icon: MessageCircle,
+    Icon: WhatsAppIcon,
     external: true,
     accent: true,
   },

@@ -21,7 +21,8 @@
 
   --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
 
-  --radius-card: 12px;
+  /* 8px: esquinas presentes pero rectas — 12px se sentía demasiado redondeado. */
+  --radius-card: 8px;
 
   /* Ease-out con más "punch" que el default de Tailwind, para que hover/press se sientan intencionales. */
   --ease-snappy: cubic-bezier(0.23, 1, 0.32, 1);

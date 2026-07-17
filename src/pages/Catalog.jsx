@@ -208,7 +208,7 @@ export default function Catalog() {
           <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Catálogo</h1>
           <p className="mt-1 text-muted">Explora por categoría o busca el equipo que necesitas.</p>
         </div>
-        <div className="relative w-full lg:max-w-md">
+        <div className="relative w-full lg:max-w-2xl lg:flex-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
           <input
             type="search"
@@ -216,7 +216,7 @@ export default function Catalog() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar por nombre, marca o modelo…"
             aria-label="Buscar productos"
-            className="w-full rounded-full border border-secondary/20 bg-white py-3 pl-12 pr-11 text-sm text-secondary shadow-sm placeholder:text-muted transition-[border-color,box-shadow] focus:border-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-dark/20 [&::-webkit-search-cancel-button]:hidden"
+            className="w-full rounded-card border border-secondary/20 bg-white py-3 pl-12 pr-11 text-sm text-secondary shadow-sm placeholder:text-muted transition-[border-color,box-shadow] focus:border-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-dark/20 [&::-webkit-search-cancel-button]:hidden"
           />
           {search && (
             <button

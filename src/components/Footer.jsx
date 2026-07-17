@@ -62,9 +62,9 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Fila 2: datos de contacto en horizontal y centrados (antes quedaban
-            cargados a la izquierda y el footer se veía chueco). */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-white/10 pt-6 text-center text-sm text-white/75">
+        {/* Fila 2: datos de contacto repartidos a lo ancho (justify-between).
+            Centrados formaban una columna angosta que se veía vertical. */}
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-t border-white/10 pt-5 text-sm text-white/75">
           <span className="flex items-center gap-2">
             <MapPin className="h-4 w-4 shrink-0 text-primary" />
             {STORE_ADDRESS}
@@ -86,7 +86,7 @@ export default function Footer() {
           </span>
         </div>
 
-        <p className="mt-6 border-t border-white/10 pt-5 text-center text-xs text-white/50">
+        <p className="mt-5 border-t border-white/10 pt-4 text-center text-xs text-white/50">
           © {new Date().getFullYear()} AUTOCELLS. Todos los derechos reservados.
         </p>
       </div>

@@ -201,7 +201,7 @@ export default function Home() {
           doble CTA y el celular en tarjeta blanca flotante (animación float-y). */}
       <section className="bg-white">
         <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-card bg-gradient-to-br from-primary-dark to-primary-hover text-white">
+          <div className="relative overflow-hidden rounded-card bg-primary-dark text-white">
             <Unlock
               className="pointer-events-none absolute -right-8 -top-8 h-52 w-52 text-white/10"
               strokeWidth={1}
