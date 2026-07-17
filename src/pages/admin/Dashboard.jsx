@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DollarSign, Package, ClipboardList, Unlock } from 'lucide-react';
+import { DollarSign, Package, Boxes, ClipboardList, Unlock, FileDown, LoaderCircle } from 'lucide-react';
 import { priceFormatter } from '../../components/ProductCard';
 import MetricCard from '../../components/MetricCard';
 import AdminTable from '../../components/AdminTable';
@@ -9,12 +9,14 @@ import { useToast } from '../../context/ToastContext';
 import { getAdminProducts } from '../../data/adminProducts';
 import { getWebOrders } from '../../data/orders';
 import { getAppointments, formatDateKey } from '../../data/appointments';
+import { downloadMonthlySalesReport } from '../../lib/salesReport';
 
 export default function Dashboard() {
   const toast = useToast();
   const [products, setProducts] = useState([]);
   const [allOrders, setAllOrders] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   // Pedidos, citas y productos vienen de la base de datos; todas las métricas
   // se derivan de ahí (nada hardcodeado).
@@ -45,7 +47,10 @@ export default function Dashboard() {
   const todayStr = formatDateKey(new Date());
   const monthKey = todayStr.slice(0, 7);
 
-  const productsInStock = products.filter((product) => product.stock > 0).length;
+  // Productos = artículos distintos en el catálogo; Unidades en stock = suma de
+  // todas las existencias (todo el inventario, no cuántos productos hay).
+  const productCount = products.length;
+  const unitsInStock = products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0);
   const pendingOrders = allOrders.filter((order) => order.status === 'pendiente').length;
   const monthSales = allOrders
     .filter((order) => order.status === 'entregado-vendido' && order.date.startsWith(monthKey))
@@ -63,16 +68,54 @@ export default function Dashboard() {
   ).length;
   const recentOrders = allOrders.slice(0, 5);
 
+  async function handleDownloadReport() {
+    if (downloadingReport) return;
+    setDownloadingReport(true);
+    try {
+      const report = await downloadMonthlySalesReport(allOrders, monthKey);
+      toast.success(
+        report.count > 0
+          ? `Reporte de ${report.monthLabel} descargado (${report.count} ventas).`
+          : `Reporte de ${report.monthLabel} descargado (sin ventas este mes).`,
+      );
+    } catch {
+      toast.error('No se pudo generar el reporte. Inténtalo de nuevo.');
+    } finally {
+      setDownloadingReport(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Dashboard</h1>
-        <p className="mt-1 text-muted">Resumen de la tienda.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Dashboard</h1>
+          <p className="mt-1 text-muted">Resumen de la tienda.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleDownloadReport}
+          disabled={downloadingReport}
+          className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-5 py-2.5 text-sm font-semibold text-white transition-colors enabled:hover:bg-primary-hover disabled:opacity-70"
+        >
+          {downloadingReport ? (
+            <>
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+              Generando…
+            </>
+          ) : (
+            <>
+              <FileDown className="h-4 w-4" />
+              Reporte del mes (PDF)
+            </>
+          )}
+        </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <MetricCard icon={DollarSign} label="Ventas del mes" value={priceFormatter.format(monthSales)} />
-        <MetricCard icon={Package} label="Productos en stock" value={productsInStock} />
+        <MetricCard icon={Boxes} label="Productos" value={productCount} hint="Artículos distintos" />
+        <MetricCard icon={Package} label="Productos en stock" value={unitsInStock} hint="Unidades totales" />
         <MetricCard icon={ClipboardList} label="Pedidos pendientes" value={pendingOrders} />
         <MetricCard icon={Unlock} label="Liberaciones realizadas" value={completedUnlocks} hint="Este mes" />
       </div>
