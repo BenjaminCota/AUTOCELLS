@@ -62,9 +62,9 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Fila 2: datos de contacto en horizontal (antes eran una columna
-            vertical que estiraba el footer). */}
-        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/10 pt-6 text-sm text-white/75">
+        {/* Fila 2: datos de contacto en horizontal y centrados (antes quedaban
+            cargados a la izquierda y el footer se veía chueco). */}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-white/10 pt-6 text-center text-sm text-white/75">
           <span className="flex items-center gap-2">
             <MapPin className="h-4 w-4 shrink-0 text-primary" />
             {STORE_ADDRESS}

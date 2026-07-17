@@ -1,15 +1,55 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Smartphone, Unlock, ShieldCheck, Award, Truck, ArrowRight } from 'lucide-react';
+import {
+  Smartphone,
+  Unlock,
+  ShieldCheck,
+  Award,
+  Truck,
+  ArrowRight,
+  ShoppingCart,
+  ClipboardCheck,
+  Store,
+  MapPin,
+  Clock,
+  MessageCircle,
+} from 'lucide-react';
 import { categories, categorySlug, useCatalog } from '../data/products';
 import ProductCard, { categoryIcons, priceFormatter } from '../components/ProductCard';
-import { STORE_FACEBOOK_URL } from '../data/store';
+import {
+  STORE_FACEBOOK_URL,
+  STORE_ADDRESS,
+  STORE_HOURS_LINES,
+  STORE_MAPS_EMBED_URL,
+  STORE_MAPS_LINK,
+  STORE_PHONE_DISPLAY,
+  whatsappLink,
+} from '../data/store';
 import { FacebookIcon } from '../components/SocialIcons';
 
 const categoryCards = categories.filter((category) => category !== 'Todos');
 
 // Actualizar estos ids cuando se capturen los productos reales en data/products.js.
 const featuredProductIds = ['iphone-15-128gb', 'iphone-14-128gb', 'funda-silicon-iphone-13', 'cargador-20w-anker'];
+
+// Modelo real de la tienda: pedido web + pago al recoger (no hay cobro en línea).
+const buySteps = [
+  {
+    icon: ShoppingCart,
+    title: 'Arma tu pedido',
+    description: 'Explora el catálogo y agrega al carrito los equipos y accesorios que quieras.',
+  },
+  {
+    icon: ClipboardCheck,
+    title: 'Confírmalo en línea',
+    description: 'Crea tu cuenta, confirma tu pedido y nosotros te apartamos las piezas.',
+  },
+  {
+    icon: Store,
+    title: 'Recoge y paga en tienda',
+    description: 'Pasa por él a la tienda y paga al recogerlo — sin anticipos ni pagos en línea.',
+  },
+];
 
 const trustPoints = [
   { icon: ShieldCheck, title: 'Compra segura', description: 'Equipos revisados antes de entregarse.' },
@@ -202,9 +242,37 @@ export default function Home() {
         </section>
       )}
 
+      {/* Cómo comprar: el modelo real (pedido web, pago al recoger) en 3 pasos
+          conectados — mismo patrón visual que "Cómo funciona" de Servicios. */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
+          <h2 className="text-center text-2xl font-bold text-secondary sm:text-3xl">
+            Compra en línea, recoge en tienda
+          </h2>
+          <p className="mx-auto mt-2 max-w-prose text-center text-muted">
+            Sin pagos por adelantado: apartas tu pedido desde el sitio y pagas al recogerlo.
+          </p>
+          <div className="relative mt-8 grid gap-8 sm:grid-cols-3">
+            {/* Línea que conecta los pasos; el ring blanco de cada ícono la corta. */}
+            <div className="pointer-events-none absolute left-[16.66%] right-[16.66%] top-7 hidden h-0.5 bg-primary-dark/15 sm:block" />
+            {buySteps.map(({ icon: Icon, title, description }, index) => (
+              <div key={title} className="relative flex flex-col items-center gap-3 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-dark text-white ring-8 ring-white">
+                  <Icon className="h-6 w-6" strokeWidth={1.75} />
+                </span>
+                <h3 className="font-semibold text-secondary">
+                  {index + 1}. {title}
+                </h3>
+                <p className="max-w-xs text-sm text-muted">{description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Banner de confianza */}
       <section className="bg-white">
-        <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-10 sm:grid-cols-3 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-[1440px] gap-8 border-t border-secondary/10 px-4 py-10 sm:grid-cols-3 sm:px-6 lg:px-8">
           {trustPoints.map(({ icon: Icon, title, description }) => (
             <div key={title} className="flex flex-col items-center gap-2 text-center">
               <Icon className="h-8 w-8 text-primary-dark" strokeWidth={1.5} />
@@ -212,6 +280,70 @@ export default function Home() {
               <p className="text-sm text-muted">{description}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Visítanos: mapa real + datos de la tienda — contenido útil que además
+          le da peso visual al final del inicio. */}
+      <section className="bg-bg-alt">
+        <div className="mx-auto grid max-w-[1440px] items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div className="overflow-hidden rounded-card border border-secondary/10 shadow-sm">
+            <iframe
+              title="Ubicación de AUTOCELLS"
+              src={STORE_MAPS_EMBED_URL}
+              className="h-[300px] w-full sm:h-[380px]"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-secondary sm:text-3xl">Visítanos en la tienda</h2>
+            <p className="mt-3 max-w-prose text-muted">
+              Somos una tienda local de San Luis Río Colorado especializada en iPhones nuevos y
+              seminuevos, accesorios y liberación por R-SIM. Ven a conocer el equipo que te interesa,
+              pedir una cotización o recoger tu pedido web.
+            </p>
+            <ul className="mt-5 space-y-3 text-sm text-secondary">
+              <li className="flex items-start gap-3">
+                <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary-dark" />
+                {STORE_ADDRESS}
+              </li>
+              <li className="flex items-start gap-3">
+                <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary-dark" />
+                <span>
+                  {STORE_HOURS_LINES.map((line) => (
+                    <span key={line} className="block">
+                      {line}
+                    </span>
+                  ))}
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <MessageCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary-dark" />
+                WhatsApp: {STORE_PHONE_DISPLAY}
+              </li>
+            </ul>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <a
+                href={STORE_MAPS_LINK}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 rounded-card bg-primary-dark px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+              >
+                Cómo llegar
+                <ArrowRight className="h-4 w-4" />
+              </a>
+              <a
+                href={whatsappLink('Hola, quiero información sobre un producto.')}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 rounded-card border border-secondary/20 px-6 py-3 text-sm font-semibold text-secondary transition-colors hover:border-primary-dark hover:text-primary-dark"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Escríbenos por WhatsApp
+              </a>
+            </div>
+          </div>
         </div>
       </section>
     </div>

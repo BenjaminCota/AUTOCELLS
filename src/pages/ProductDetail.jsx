@@ -99,12 +99,14 @@ export default function ProductDetail() {
       <div className="grid gap-10 lg:grid-cols-2">
         {/* Galería */}
         <div>
-          <div className="flex aspect-square items-center justify-center rounded-card bg-bg-alt">
+          {/* Fondo blanco + padding mínimo: las fotos de producto traen fondo
+              blanco y así llenan el panel sin marco gris de por medio. */}
+          <div className="flex aspect-square items-center justify-center overflow-hidden rounded-card border border-secondary/10 bg-white">
             {images.length > 0 ? (
               <img
                 src={images[selectedImage] ?? images[0]}
                 alt={product.name}
-                className="h-full w-full object-contain p-8"
+                className="h-full w-full object-contain p-2"
               />
             ) : (
               <Icon className="h-32 w-32 text-secondary/30" strokeWidth={1.25} />
@@ -118,7 +120,7 @@ export default function ProductDetail() {
                   type="button"
                   aria-label={`Ver imagen ${index + 1} de ${product.name}`}
                   onClick={() => setSelectedImage(index)}
-                  className={`flex aspect-square items-center justify-center rounded-card border-2 bg-bg-alt transition-colors ${
+                  className={`flex aspect-square items-center justify-center overflow-hidden rounded-card border-2 bg-white transition-colors ${
                     selectedImage === index ? 'border-primary-dark' : 'border-primary/30 hover:border-primary'
                   }`}
                 >
