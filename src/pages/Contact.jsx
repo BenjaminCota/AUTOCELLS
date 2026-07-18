@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Phone, Clock, Mail, ArrowUpRight } from 'lucide-react';
+import { MapPin, Phone, Clock, ArrowUpRight } from 'lucide-react';
 import {
   STORE_ADDRESS,
   STORE_HOURS_LINES,
@@ -11,7 +11,7 @@ import {
   STORE_INSTAGRAM_URL,
   whatsappLink,
 } from '../data/store';
-import { FacebookIcon, InstagramIcon, WhatsAppIcon } from '../components/SocialIcons';
+import { FacebookIcon, InstagramIcon, WhatsAppIcon, GmailIcon } from '../components/SocialIcons';
 
 // Métodos de contacto directos. `accent` resalta el preferido (WhatsApp),
 // `external` decide si el enlace abre en pestaña nueva (mailto no) y
@@ -32,8 +32,9 @@ const contactMethods = [
     value: STORE_EMAIL,
     description: 'Para cotizaciones y dudas más detalladas.',
     href: `mailto:${STORE_EMAIL}`,
-    Icon: Mail,
-    iconClass: 'bg-primary-dark text-white',
+    Icon: GmailIcon,
+    // El logo de Gmail es multicolor: va sobre placa blanca con un aro sutil.
+    iconClass: 'bg-white ring-1 ring-secondary/10 p-0.5',
     external: false,
   },
   {
