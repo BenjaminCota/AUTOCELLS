@@ -157,7 +157,7 @@ export default function Contact() {
               }`}
             >
               <span
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-card transition-transform duration-200 ease-snappy group-hover:scale-110 ${iconClass}`}
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-sm transition-transform duration-200 ease-snappy group-hover:scale-110 ${iconClass}`}
               >
                 <Icon className="h-5 w-5" />
               </span>

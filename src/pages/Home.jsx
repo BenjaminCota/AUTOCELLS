@@ -230,7 +230,7 @@ export default function Home() {
                 <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                   <Link
                     to="/servicios"
-                    className="inline-flex items-center justify-center gap-2 rounded-card bg-white px-6 py-3.5 text-base font-semibold text-primary-dark shadow-sm transition-transform duration-150 ease-snappy hover:-translate-y-0.5 active:scale-95"
+                    className="inline-flex items-center justify-center gap-2 rounded-card bg-white px-6 py-3.5 text-base font-semibold text-secondary shadow-sm transition-transform duration-150 ease-snappy hover:-translate-y-0.5 active:scale-95"
                   >
                     Conoce el servicio
                     <ArrowRight className="h-5 w-5" />
