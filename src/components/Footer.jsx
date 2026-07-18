@@ -8,8 +8,9 @@ import {
   STORE_EMAIL,
   STORE_FACEBOOK_URL,
   STORE_INSTAGRAM_URL,
+  whatsappLink,
 } from '../data/store';
-import { FacebookIcon, InstagramIcon } from './SocialIcons';
+import { FacebookIcon, InstagramIcon, WhatsAppIcon } from './SocialIcons';
 
 const secondaryLinks = [
   { to: '/catalogo', label: 'Catálogo' },
@@ -40,13 +41,14 @@ export default function Footer() {
               </Link>
             ))}
           </nav>
-          <div className="flex gap-3">
+          {/* Colores oficiales de cada red (como se ven en sus apps). */}
+          <div className="flex items-center gap-3">
             <a
               href={STORE_FACEBOOK_URL}
               target="_blank"
               rel="noreferrer"
               aria-label="Facebook"
-              className="flex h-9 w-9 items-center justify-center rounded-card bg-white/10 text-white/90 transition-colors hover:bg-primary hover:text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2] text-white transition-transform duration-150 ease-snappy hover:scale-110"
             >
               <FacebookIcon />
             </a>
@@ -55,9 +57,18 @@ export default function Footer() {
               target="_blank"
               rel="noreferrer"
               aria-label="Instagram"
-              className="flex h-9 w-9 items-center justify-center rounded-card bg-white/10 text-white/90 transition-colors hover:bg-primary hover:text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-[linear-gradient(45deg,#f09433_0%,#e6683c_25%,#dc2743_50%,#cc2366_75%,#bc1888_100%)] text-white transition-transform duration-150 ease-snappy hover:scale-110"
             >
               <InstagramIcon />
+            </a>
+            <a
+              href={whatsappLink('Hola, tengo una pregunta sobre AUTOCELLS.')}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="WhatsApp"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#25D366] text-white transition-transform duration-150 ease-snappy hover:scale-110"
+            >
+              <WhatsAppIcon />
             </a>
           </div>
         </div>

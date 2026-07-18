@@ -13,8 +13,9 @@ import {
 } from '../data/store';
 import { FacebookIcon, InstagramIcon, WhatsAppIcon } from '../components/SocialIcons';
 
-// Métodos de contacto directos. `accent` resalta el preferido (WhatsApp) y
-// `external` decide si el enlace abre en pestaña nueva (mailto no).
+// Métodos de contacto directos. `accent` resalta el preferido (WhatsApp),
+// `external` decide si el enlace abre en pestaña nueva (mailto no) y
+// `iconClass` pinta la placa del ícono con el color oficial de cada red.
 const contactMethods = [
   {
     name: 'WhatsApp',
@@ -22,6 +23,7 @@ const contactMethods = [
     description: 'La vía más rápida, en horario de tienda.',
     href: whatsappLink('Hola, tengo una pregunta sobre AUTOCELLS.'),
     Icon: WhatsAppIcon,
+    iconClass: 'bg-[#25D366] text-white',
     external: true,
     accent: true,
   },
@@ -31,6 +33,7 @@ const contactMethods = [
     description: 'Para cotizaciones y dudas más detalladas.',
     href: `mailto:${STORE_EMAIL}`,
     Icon: Mail,
+    iconClass: 'bg-primary-dark text-white',
     external: false,
   },
   {
@@ -39,6 +42,7 @@ const contactMethods = [
     description: 'Promociones y equipos recién llegados.',
     href: STORE_FACEBOOK_URL,
     Icon: FacebookIcon,
+    iconClass: 'bg-[#1877F2] text-white',
     external: true,
   },
   {
@@ -47,6 +51,8 @@ const contactMethods = [
     description: 'Fotos y novedades del inventario.',
     href: STORE_INSTAGRAM_URL,
     Icon: InstagramIcon,
+    iconClass:
+      'bg-[linear-gradient(45deg,#f09433_0%,#e6683c_25%,#dc2743_50%,#cc2366_75%,#bc1888_100%)] text-white',
     external: true,
   },
 ];
@@ -138,7 +144,7 @@ export default function Contact() {
             <Phone className="h-5 w-5 text-primary-dark" />
             <h2 className="text-xl font-bold text-secondary">Escríbenos directo</h2>
           </div>
-          {contactMethods.map(({ name, value, description, href, Icon, external, accent }) => (
+          {contactMethods.map(({ name, value, description, href, Icon, iconClass, external, accent }) => (
             <a
               key={name}
               href={href}
@@ -150,7 +156,9 @@ export default function Contact() {
                   : 'border-secondary/10 hover:border-primary-dark/40 hover:bg-bg-alt'
               }`}
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-card bg-primary-dark/10 text-primary-dark transition-transform duration-200 ease-snappy group-hover:scale-110">
+              <span
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-card transition-transform duration-200 ease-snappy group-hover:scale-110 ${iconClass}`}
+              >
                 <Icon className="h-5 w-5" />
               </span>
               <span className="min-w-0 flex-1">

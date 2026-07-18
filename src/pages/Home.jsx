@@ -201,9 +201,11 @@ export default function Home() {
           doble CTA y el celular en tarjeta blanca flotante (animación float-y). */}
       <section className="bg-white">
         <div className="mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-card bg-primary-dark text-white">
+          {/* Carbón azulado oscuro (no el cian pleno): se ve premium y deja que
+              los acentos cian y la tarjeta blanca del producto resalten. */}
+          <div className="relative overflow-hidden rounded-card bg-[#13262e] text-white">
             <Unlock
-              className="pointer-events-none absolute -right-8 -top-8 h-52 w-52 text-white/10"
+              className="pointer-events-none absolute -right-8 -top-8 h-52 w-52 text-primary/10"
               strokeWidth={1}
               aria-hidden="true"
             />
@@ -220,7 +222,7 @@ export default function Home() {
                 <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-white/95">
                   {rsimPerks.map((perk) => (
                     <li key={perk} className="flex items-center gap-1.5">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
                       {perk}
                     </li>
                   ))}

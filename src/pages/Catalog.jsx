@@ -201,14 +201,17 @@ export default function Catalog() {
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
-      {/* Cabecera tipo barra de tienda: título a la izquierda y buscador a la
-          derecha (en vez de bandas apiladas de ancho completo). */}
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Catálogo</h1>
-          <p className="mt-1 text-muted">Explora por categoría o busca el equipo que necesitas.</p>
-        </div>
-        <div className="relative w-full lg:max-w-2xl lg:flex-1">
+      <h1 className="text-2xl font-bold uppercase tracking-wide text-secondary sm:text-3xl">Catálogo</h1>
+      <p className="mt-1 text-muted">Explora por categoría o busca el equipo que necesitas.</p>
+
+      {/* Buscador a TODO lo ancho, con botón "Buscar" integrado. La búsqueda es
+          en vivo (cada tecla filtra); el submit solo evita recargar la página. */}
+      <form
+        role="search"
+        onSubmit={(event) => event.preventDefault()}
+        className="mt-5 flex w-full overflow-hidden rounded-card border border-secondary/20 bg-white shadow-sm transition-[border-color,box-shadow] focus-within:border-primary-dark focus-within:ring-2 focus-within:ring-primary-dark/20"
+      >
+        <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
           <input
             type="search"
@@ -216,7 +219,7 @@ export default function Catalog() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar por nombre, marca o modelo…"
             aria-label="Buscar productos"
-            className="w-full rounded-card border border-secondary/20 bg-white py-3 pl-12 pr-11 text-sm text-secondary shadow-sm placeholder:text-muted transition-[border-color,box-shadow] focus:border-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-dark/20 [&::-webkit-search-cancel-button]:hidden"
+            className="w-full border-0 bg-transparent py-3.5 pl-12 pr-11 text-sm text-secondary placeholder:text-muted focus:outline-none [&::-webkit-search-cancel-button]:hidden"
           />
           {search && (
             <button
@@ -229,7 +232,14 @@ export default function Catalog() {
             </button>
           )}
         </div>
-      </div>
+        <button
+          type="submit"
+          className="flex shrink-0 items-center gap-2 bg-primary-dark px-6 text-sm font-semibold text-white transition-colors hover:bg-primary-hover sm:px-8"
+        >
+          <Search className="h-4 w-4 sm:hidden" />
+          <span className="hidden sm:inline">Buscar</span>
+        </button>
+      </form>
 
       {/* Barra de categorías: navegación visible (además del panel "Filtrar").
           En móvil hace scroll horizontal; en desktop envuelve. */}
